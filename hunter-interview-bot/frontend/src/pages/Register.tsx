@@ -1,195 +1,210 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Alert,
-  InputAdornment,
-  IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  SelectChangeEvent,
-} from '@mui/material';
-import { UserIcon, EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { Box, Paper, Typography, TextField, Button, Alert, InputAdornment, IconButton } from '@mui/material';
+import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, UserIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 
 const Register: React.FC = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'APPLICANT' });
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register, user } = useAuth();
   const navigate = useNavigate();
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (e: SelectChangeEvent) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name as string]: value }));
-  };
+  const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    if (!formData.name || !formData.email || !formData.password || !formData.role) {
+    if (!name || !email || !password || !confirmPassword) {
       setError('All fields are required');
       setLoading(false);
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Invalid email format');
       setLoading(false);
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      setLoading(false);
-      return;
-    }
-
     try {
-      await register(formData.email, formData.password, formData.name, formData.role);
-      const redirectPath = user?.role === 'APPLICANT' ? '/applicant/home' :
-                          user?.role === 'RECRUITER' ? '/recruiter/home' :
-                          user?.role === 'ADMIN' ? '/admin/home' : '/home';
-      navigate(redirectPath);
+      await register(name, email, password, 'ADMIN');
+      navigate('/admin/home');
     } catch (err: any) {
       setError(err.message || 'Failed to register. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
 
   const containerVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.2)' },
+    hover: { scale: 1.05, boxShadow: '0px 0px 15px rgba(59, 130, 246, 0.4)' },
     tap: { scale: 0.95 },
   };
 
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        width: '100vw',
+        height: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        py: 4,
-        bgcolor: 'background.default',
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+        bgcolor: '#0a0f24',
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e1e3b 100%)',
+        p: { xs: 2, sm: 3 },
       }}
     >
       <motion.div variants={containerVariants} initial="hidden" animate="visible">
         <Paper
           elevation={6}
           sx={{
-            p: 4,
-            maxWidth: 400,
+            p: { xs: 3, sm: 4 },
             width: '100%',
+            maxWidth: { xs: 320, sm: 360 },
+            minWidth: 280,
             borderRadius: 3,
-            bgcolor: 'background.paper',
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(240,240,245,0.9) 100%)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            bgcolor: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid rgba(59, 130, 246, 0.2)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
           }}
         >
           <Typography
-            variant="h4"
+            variant="h5"
             align="center"
             sx={{
               fontWeight: 'bold',
-              mb: 2,
-              color: 'primary.main',
-              textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              mb: 1,
+              color: '#3b82f6',
+              background: 'linear-gradient(45deg, #3b82f6, #9333ea)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontSize: { xs: '1.5rem', sm: '1.75rem' },
             }}
           >
-            Join Hunter AI
+            Admin Registration
           </Typography>
           <Typography
-            variant="body1"
-            color="text.secondary"
+            variant="body2"
+            color="#94a3b8"
             align="center"
-            sx={{ mb: 4 }}
+            sx={{ mb: 3, fontSize: { xs: '0.875rem', sm: '1rem' } }}
           >
-            Create your account to get started
+            Create your admin account
           </Typography>
 
-          {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 2,
+                bgcolor: 'rgba(239, 68, 68, 0.1)',
+                color: '#ef4444',
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              }}
+            >
+              {error}
+            </Alert>
+          )}
 
           <form onSubmit={handleSubmit}>
             <TextField
               fullWidth
               label="Full Name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               required
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <UserIcon className="h-5 w-5 text-gray-400" />
+                    <UserIcon className="h-4 w-4 text-blue-400" />
                   </InputAdornment>
                 ),
               }}
               sx={{
-                mb: 3,
+                mb: 2,
                 '& .MuiOutlinedInput-root': {
                   borderRadius: 2,
-                  '&:hover fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+                  bgcolor: 'rgba(30, 41, 59, 0.5)',
+                  color: '#e2e8f0',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  '& fieldset': { borderColor: 'rgba(59, 130, 246, 0.3)' },
+                  '&:hover fieldset': { borderColor: '#3b82f6' },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#3b82f6',
+                    boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
+                  },
                 },
+                '& .MuiInputLabel-root': {
+                  color: '#94a3b8',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
               }}
             />
             <TextField
               fullWidth
               label="Email Address"
-              name="email"
               type="email"
-              value={formData.email}
-              onChange={handleInputChange}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                    <EnvelopeIcon className="h-4 w-4 text-blue-400" />
                   </InputAdornment>
                 ),
               }}
               sx={{
-                mb: 3,
+                mb: 2,
                 '& .MuiOutlinedInput-root': {
                   borderRadius: 2,
-                  '&:hover fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+                  bgcolor: 'rgba(30, 41, 59, 0.5)',
+                  color: '#e2e8f0',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  '& fieldset': { borderColor: 'rgba(59, 130, 246, 0.3)' },
+                  '&:hover fieldset': { borderColor: '#3b82f6' },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#3b82f6',
+                    boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
+                  },
                 },
+                '& .MuiInputLabel-root': {
+                  color: '#94a3b8',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
               }}
             />
             <TextField
               fullWidth
               label="Password"
-              name="password"
               type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleInputChange}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                    <LockClosedIcon className="h-4 w-4 text-blue-400" />
                   </InputAdornment>
                 ),
                 endAdornment: (
@@ -197,11 +212,62 @@ const Register: React.FC = () => {
                     <IconButton
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
+                      sx={{ p: 0.5 }}
                     >
                       {showPassword ? (
-                        <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                        <EyeSlashIcon className="h-4 w-4 text-blue-400" />
                       ) : (
-                        <EyeIcon className="h-5 w-5 text-gray-400" />
+                        <EyeIcon className="h-4 w-4 text-blue-400" />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  bgcolor: 'rgba(30, 41, 59, 0.5)',
+                  color: '#e2e8f0',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  '& fieldset': { borderColor: 'rgba(59, 130, 246, 0.3)' },
+                  '&:hover fieldset': { borderColor: '#3b82f6' },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#3b82f6',
+                    boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: '#94a3b8',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Confirm Password"
+              type={showPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockClosedIcon className="h-4 w-4 text-blue-400" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      sx={{ p: 0.5 }}
+                    >
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-4 w-4 text-blue-400" />
+                      ) : (
+                        <EyeIcon className="h-4 w-4 text-blue-400" />
                       )}
                     </IconButton>
                   </InputAdornment>
@@ -211,29 +277,23 @@ const Register: React.FC = () => {
                 mb: 3,
                 '& .MuiOutlinedInput-root': {
                   borderRadius: 2,
-                  '&:hover fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+                  bgcolor: 'rgba(30, 41, 59, 0.5)',
+                  color: '#e2e8f0',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  '& fieldset': { borderColor: 'rgba(59, 130, 246, 0.3)' },
+                  '&:hover fieldset': { borderColor: '#3b82f6' },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#3b82f6',
+                    boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
+                  },
                 },
+                '& .MuiInputLabel-root': {
+                  color: '#94a3b8',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
               }}
             />
-            <FormControl
-              fullWidth
-              sx={{
-                mb: 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  '&:hover fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-                },
-              }}
-            >
-              <InputLabel>Role</InputLabel>
-              <Select name="role" value={formData.role} onChange={handleSelectChange} label="Role">
-                <MenuItem value="APPLICANT">Applicant</MenuItem>
-                <MenuItem value="RECRUITER">Recruiter</MenuItem>
-                <MenuItem value="ADMIN">Admin</MenuItem>
-              </Select>
-            </FormControl>
             <Button
               component={motion.button}
               variants={buttonVariants}
@@ -245,25 +305,36 @@ const Register: React.FC = () => {
               disabled={loading}
               sx={{
                 borderRadius: 2,
-                py: 1.5,
-                bgcolor: 'primary.main',
-                '&:hover': { bgcolor: 'primary.dark', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)' },
+                py: { xs: 1, sm: 1.5 },
+                background: 'linear-gradient(45deg, #3b82f6, #9333ea)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #2563eb, #7e22ce)',
+                  boxShadow: '0 0 15px rgba(59, 130, 246, 0.4)',
+                },
                 textTransform: 'none',
                 fontWeight: 'bold',
+                fontSize: { xs: '0.875rem', sm: '1rem' },
               }}
             >
-              {loading ? 'Registering...' : 'Register'}
+              {loading ? 'Creating Account...' : 'Create Admin Account'}
             </Button>
-            <Typography
-              variant="body2"
-              align="center"
-              sx={{ mt: 2, color: 'text.secondary' }}
+            <Button
+              fullWidth
+              variant="text"
+              onClick={() => navigate('/login')}
+              sx={{
+                mt: 2,
+                textTransform: 'none',
+                color: '#3b82f6',
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                '&:hover': {
+                  color: '#60a5fa',
+                  background: 'rgba(59, 130, 246, 0.1)',
+                },
+              }}
             >
-              Already have an account?{' '}
-              <Link to="/login" style={{ color: '#1976d2', textDecoration: 'none' }}>
-                Log In
-              </Link>
-            </Typography>
+              Already have an account? Login
+            </Button>
           </form>
         </Paper>
       </motion.div>

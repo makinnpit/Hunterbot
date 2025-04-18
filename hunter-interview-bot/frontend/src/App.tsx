@@ -29,7 +29,7 @@ import CreateJob from './pages/admin/CreateJob.tsx';
 export const ADMIN_CREDENTIALS = {
   id: '1',
   email: 'admin@hunterai.com',
-  password: 'HunterAI2025!',
+  password: 'admin123',
   role: 'ADMIN' as const,
   name: 'Admin User'
 };

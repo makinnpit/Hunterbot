@@ -3,16 +3,16 @@ import { createTheme } from '@mui/material/styles';
 // Custom color palette
 const colors = {
   primary: {
-    main: '#3b82f6', // Neon blue from App.css
-    light: '#60a5fa',
-    dark: '#2563eb',
-    contrastText: '#e2e8f0',
+    main: '#f97316', // Orange from button
+    light: '#fb923c',
+    dark: '#ea580c',
+    contrastText: '#ffffff',
   },
   secondary: {
-    main: '#9333ea', // Neon purple from App.css
-    light: '#a855f7',
-    dark: '#7e22ce',
-    contrastText: '#e2e8f0',
+    main: '#1f2937', // Dark grey from navbar
+    light: '#4b5563',
+    dark: '#111827',
+    contrastText: '#ffffff',
   },
   error: {
     main: '#ef4444',
@@ -35,12 +35,12 @@ const colors = {
     dark: '#059669',
   },
   background: {
-    default: '#0a0f24', // Dark navy from App.css
-    paper: 'rgba(15, 23, 42, 0.95)', // Semi-transparent dark from App.css
+    default: '#ffffff', // White background
+    paper: 'rgba(255, 255, 255, 0.95)', // Slightly transparent white for papers
   },
   text: {
-    primary: '#e2e8f0', // Light text from App.css
-    secondary: '#94a3b8', // Muted text from App.css
+    primary: '#1f2937', // Dark grey for main text
+    secondary: '#6b7280', // Light grey for secondary text
   },
   grey: {
     50: '#f9fafb',
@@ -58,9 +58,9 @@ const colors = {
 
 // Custom typography
 const typography = {
-  fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+  fontFamily: '"Poppins", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
   h1: {
-    fontSize: '2.5rem',
+    fontSize: '3rem',
     fontWeight: 700,
     lineHeight: 1.2,
     '@media (max-width: 600px)': {
@@ -68,7 +68,7 @@ const typography = {
     },
   },
   h2: {
-    fontSize: '2rem',
+    fontSize: '2.5rem',
     fontWeight: 700,
     lineHeight: 1.3,
     '@media (max-width: 600px)': {
@@ -76,7 +76,7 @@ const typography = {
     },
   },
   h3: {
-    fontSize: '1.75rem',
+    fontSize: '2rem',
     fontWeight: 600,
     lineHeight: 1.3,
     '@media (max-width: 600px)': {
@@ -109,12 +109,12 @@ const typography = {
   },
   subtitle1: {
     fontSize: '1rem',
-    fontWeight: 500,
+    fontWeight: 400,
     lineHeight: 1.5,
   },
   subtitle2: {
     fontSize: '0.875rem',
-    fontWeight: 500,
+    fontWeight: 400,
     lineHeight: 1.5,
   },
   body1: {
@@ -126,8 +126,9 @@ const typography = {
     lineHeight: 1.5,
   },
   button: {
-    textTransform: 'none' as const,
-    fontWeight: 500,
+    textTransform: 'uppercase' as const,
+    fontWeight: 600,
+    fontSize: '0.875rem',
   },
 };
 
@@ -137,19 +138,21 @@ const components = {
     styleOverrides: {
       root: {
         borderRadius: 8,
-        padding: '8px 16px',
+        padding: '10px 20px',
       },
       contained: {
         boxShadow: 'none',
         '&:hover': {
-          boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+          backgroundColor: '#ea580c', // Darker orange on hover
         },
       },
       outlined: {
-        borderColor: 'rgba(59, 130, 246, 0.3)',
+        borderColor: '#d1d5db',
+        color: '#1f2937',
         '&:hover': {
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderColor: '#f97316',
+          backgroundColor: 'rgba(249, 115, 22, 0.05)',
         },
       },
     },
@@ -158,8 +161,8 @@ const components = {
     styleOverrides: {
       root: {
         borderRadius: 12,
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        backgroundColor: '#ffffff',
       },
     },
   },
@@ -167,8 +170,9 @@ const components = {
     styleOverrides: {
       root: {
         borderRadius: 12,
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        border: '1px solid rgba(59, 130, 246, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        border: 'none',
       },
     },
   },
@@ -177,24 +181,24 @@ const components = {
       root: {
         '& .MuiOutlinedInput-root': {
           borderRadius: 8,
-          backgroundColor: 'rgba(30, 41, 59, 0.5)',
-          color: '#e2e8f0',
+          backgroundColor: '#ffffff',
+          color: '#1f2937',
           '& fieldset': {
-            borderColor: 'rgba(59, 130, 246, 0.3)',
+            borderColor: '#d1d5db',
           },
           '&:hover fieldset': {
-            borderColor: '#3b82f6',
+            borderColor: '#f97316',
           },
           '&.Mui-focused fieldset': {
-            borderColor: '#3b82f6',
-            boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
+            borderColor: '#f97316',
+            boxShadow: '0 0 6px rgba(249, 115, 22, 0.2)',
           },
         },
         '& .MuiInputLabel-root': {
-          color: '#94a3b8',
+          color: '#6b7280',
         },
         '& .MuiInputLabel-root.Mui-focused': {
-          color: '#3b82f6',
+          color: '#f97316',
         },
       },
     },
@@ -203,10 +207,10 @@ const components = {
     styleOverrides: {
       root: {
         borderRadius: 6,
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-        color: '#e2e8f0',
+        backgroundColor: '#f3f4f6',
+        color: '#1f2937',
         '&:hover': {
-          backgroundColor: 'rgba(59, 130, 246, 0.4)',
+          backgroundColor: '#e5e7eb',
         },
       },
     },
@@ -215,8 +219,12 @@ const components = {
     styleOverrides: {
       root: {
         borderRadius: 8,
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        color: '#ef4444',
+        backgroundColor: '#fef2f2',
+        color: '#b91c1c',
+        '&.MuiAlert-standardSuccess': {
+          backgroundColor: '#f0fdf4',
+          color: '#15803d',
+        },
       },
     },
   },

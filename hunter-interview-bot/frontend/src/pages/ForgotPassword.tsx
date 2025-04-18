@@ -30,23 +30,68 @@ const ForgotPassword: React.FC = () => {
   };
 
   const containerVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.3 } },
+  };
+
+  const buttonVariants = {
+    hover: { scale: 1.05 },
+    tap: { scale: 0.95 },
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4, bgcolor: 'background.default' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: { xs: 2, sm: 3 },
+        width: '100%',
+      }}
+    >
       <motion.div variants={containerVariants} initial="hidden" animate="visible">
-        <Paper elevation={6} sx={{ p: 4, maxWidth: 400, width: '100%', borderRadius: 3 }}>
-          <Typography variant="h4" align="center" sx={{ fontWeight: 'bold', mb: 2 }}>
+        <Paper
+          elevation={6}
+          className="hunter-card"
+          sx={{
+            p: { xs: 3, sm: 4 },
+            width: '100%',
+            maxWidth: { xs: 340, sm: 400 },
+            minWidth: { xs: 280 },
+          }}
+        >
+          <Typography
+            variant="h5"
+            align="center"
+            sx={{
+              mb: 1,
+              background: 'linear-gradient(45deg, #3b82f6, #9333ea)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
             Reset Password
           </Typography>
-          <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 4 }}>
-            Enter your email to receive a password reset link.
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            align="center"
+            sx={{ mb: 3 }}
+          >
+            Enter your email to receive a password reset link
           </Typography>
 
-          {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-          {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {success}
+            </Alert>
+          )}
 
           <form onSubmit={handleSubmit}>
             <TextField
@@ -56,28 +101,26 @@ const ForgotPassword: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              margin="normal"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                    <EnvelopeIcon className="h-4 w-4" />
                   </InputAdornment>
                 ),
               }}
-              sx={{
-                mb: 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  '&:hover fieldset': { borderColor: 'primary.main' },
-                  '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-                },
-              }}
             />
             <Button
+              component={motion.button}
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
               type="submit"
               fullWidth
               variant="contained"
               disabled={loading}
-              sx={{ borderRadius: 2, py: 1.5, bgcolor: 'primary.main', '&:hover': { bgcolor: 'primary.dark' } }}
+              className="hunter-button hunter-button-primary"
+              sx={{ mt: 2 }}
             >
               {loading ? 'Sending...' : 'Send Reset Link'}
             </Button>
