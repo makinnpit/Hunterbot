@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      String   @default("APPLICANT")
+  phone     String?   // Added for profile
+  resumeUrl String?   // Added for profile
+  createdAt DateTime @default(now())
+  applications Application[]
+  schedules Schedule[]
+  evaluations Evaluation[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model Job {
+  id           String   @id @default(uuid())
+  title        String
+  department   String?
+  location     String?
+  type         String
+  description  String?
+  requirements String[]
+  skills       String[]
+  createdAt    DateTime @default(now())
+  externalUrl  String?
+  status       String   @default("ACTIVE")
+  applications Application[]
+  questions    Question[]
+  schedules    Schedule[]
+}
+
+model Application {
+  id        String   @id @default(uuid())
+  jobId     String
+  userId    String
+  name      String
+  email     String
+  phone     String?
+  resumeUrl String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  job       Job      @relation(fields: [jobId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  schedules Schedule[]
+  evaluations Evaluation[]
+}
+
+model Question {
+  id          String   @id @default(uuid())
+  jobId       String
+  text        String
+  generatedBy String   @default("MANUAL")
+  createdAt   DateTime @default(now())
+  job         Job      @relation(fields: [jobId], references: [id])
+  evaluations Evaluation[]
+}
+
+model Schedule {
+  id            String   @id @default(uuid())
+  applicationId String
+  userId        String
+  jobId         String
+  date          DateTime
+  createdAt     DateTime @default(now())
+  application   Application @relation(fields: [applicationId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
+  job           Job        @relation(fields: [jobId], references: [id])
+}
+
+model Evaluation {
+  id            String   @id @default(uuid())
+  applicationId String
+  userId        String
+  questionId    String?
+  answer        String?
+  englishScore  Float?
+  expertiseScore Float?
+  aiScore       Float?
+  teamFitScore  Float?
+  overallScore  Float?
+  comments      String?
+  createdAt     DateTime @default(now())
+  application   Application @relation(fields: [applicationId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
+  question      Question?   @relation(fields: [questionId], references: [id])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
