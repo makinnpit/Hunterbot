@@ -1,0 +1,57 @@
+/* Scoped to hunter-app */
+.hunter-app {
+    width: 100vw;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: #ffffff; /* White background */
+  }
+  
+  /* Reset styles within app */
+  .hunter-app * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Buttons */
+  .hunter-app .hunter-button {
+    border-radius: 8px;
+    text-transform: capitalize;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  
+  /* Cards */
+  .hunter-app .hunter-card {
+    transition: none;
+  }
+  
+  /* Responsive Layout */
+  @media (max-width: 600px) {
+    .hunter-app .hunter-card {
+      max-width: 320px;
+      min-width: 280px;
+      margin: 0 auto;
+    }
+    .hunter-app .hunter-button {
+      padding: 0.75rem;
+      font-size: 0.875rem;
+    }
+  }
+  
+  @media (min-width: 600px) {
+    .hunter-app .hunter-card {
+      max-width: 360px;
+      margin: 0 auto;
+    }
+    .hunter-app .hunter-button {
+      padding: 1rem;
+      font-size: 0.875rem;
+    }
+  }
+  
+  /* Prevent MUI overflow */
+  .hunter-app .MuiPaper-root, .hunter-app .MuiBox-root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
