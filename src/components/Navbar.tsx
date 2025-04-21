@@ -169,11 +169,8 @@ const Navbar: React.FC<NavbarProps> = ({
                     Settings
                   </button>
                   <button
-                    onClick={() => {
-                      localStorage.removeItem('token');
-                      navigate('/login');
-                    }}
-                    className="block w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors text-[var(--error)]"
+                    onClick={() => navigate('/admin/settings')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors text-[var(--text-primary)]"
                   >
                     Logout
                   </button>
