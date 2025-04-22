@@ -65,6 +65,8 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { db } from '../../firebase/firebaseConfig'; // Adjust the path to your firebaseConfig file
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface CreateJobModalProps {
   open: boolean;
@@ -530,15 +532,32 @@ Keep the response in strict JSON format.`;
   const handleSubmit = async () => {
     try {
       setIsLoading(true);
-      // Here you would typically make an API call to save the job
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated API call
-      setSuccessMessage('Job created successfully!');
+  
+      // Sanitize jobData to remove undefined values
+      const sanitizedJobData = Object.fromEntries(
+        Object.entries({
+          ...formData,
+          company: selectedCompany,
+          generatedQuestions: questions,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          status: 'active', // Ensure status is set explicitly
+        }).filter(([_, value]) => value !== undefined)
+      );
+  
+      console.log('Sanitized job data:', sanitizedJobData); // Log for debugging
+  
+      const docRef = await addDoc(collection(db, 'createjobs'), sanitizedJobData);
+  
+      console.log('Job created with ID:', docRef.id);
+      setSuccessMessage('Job created successfully and stored in Firestore!');
       setTimeout(() => {
         onClose();
         navigate('/admin/jobs');
       }, 2000);
     } catch (error) {
-      setError('Failed to create job. Please try again.');
+      console.error('Detailed Firestore error:', error);
+      setError('Failed to create job and save to Firestore. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -1384,8 +1403,9 @@ Keep the response in strict JSON format.`;
                 px: 4,
                 '&:hover': { bgcolor: '#7c3aed' }
               }}
+              disabled={isLoading}
             >
-              {activeStep === steps.length - 1 ? 'Create Job' : 'Next'}
+              {isLoading ? 'Creating...' : activeStep === steps.length - 1 ? 'Create Job' : 'Next'}
             </Button>
           </Box>
         </Box>

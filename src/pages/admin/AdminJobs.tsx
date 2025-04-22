@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -14,6 +14,8 @@ import {
   PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import Navbar from '../../components/Navbar';
+import { db } from '../../firebase/firebaseConfig'; // Adjust the path to your firebaseConfig file
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 interface Job {
   id: string;
@@ -29,67 +31,8 @@ interface Job {
   description: string;
   requirements: string[];
   skills: string[];
+  company?: string; // Added to match Firestore data
 }
-
-const mockJobs: Job[] = [
-  {
-    id: '1',
-    title: 'Senior Frontend Developer',
-    department: 'Engineering',
-    location: 'Remote',
-    type: 'Full-time',
-    salary: '$120,000 - $150,000',
-    posted: '2024-03-15',
-    expires: '2024-04-15',
-    status: 'active',
-    applicants: 45,
-    description: 'We are looking for an experienced Frontend Developer to join our team...',
-    requirements: [
-      '5+ years of experience with React',
-      'Strong TypeScript skills',
-      'Experience with modern frontend tools',
-    ],
-    skills: ['React', 'TypeScript', 'Next.js', 'Tailwind CSS'],
-  },
-  {
-    id: '2',
-    title: 'Backend Engineer',
-    department: 'Engineering',
-    location: 'Hybrid',
-    type: 'Full-time',
-    salary: '$130,000 - $160,000',
-    posted: '2024-03-10',
-    expires: '2024-04-10',
-    status: 'active',
-    applicants: 38,
-    description: 'Seeking a skilled Backend Engineer to develop and maintain our services...',
-    requirements: [
-      '4+ years of experience with Node.js',
-      'Strong understanding of databases',
-      'Experience with microservices',
-    ],
-    skills: ['Node.js', 'PostgreSQL', 'Docker', 'AWS'],
-  },
-  {
-    id: '3',
-    title: 'Product Designer',
-    department: 'Design',
-    location: 'On-site',
-    type: 'Full-time',
-    salary: '$90,000 - $120,000',
-    posted: '2024-02-15',
-    expires: '2024-03-15',
-    status: 'archived',
-    applicants: 62,
-    description: 'Looking for a creative Product Designer to join our design team...',
-    requirements: [
-      '3+ years of product design experience',
-      'Strong portfolio',
-      'Experience with design systems',
-    ],
-    skills: ['Figma', 'Adobe XD', 'Sketch', 'UI/UX'],
-  },
-];
 
 const AdminJobs: React.FC = () => {
   const navigate = useNavigate();
@@ -98,20 +41,75 @@ const AdminJobs: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const departments = ['All', 'Engineering', 'Design', 'Marketing', 'Sales'];
   const jobTypes = ['All', 'Full-time', 'Part-time', 'Contract', 'Internship'];
   const locations = ['All', 'Remote', 'On-site', 'Hybrid'];
 
-  const filteredJobs = mockJobs.filter((job) => {
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.department.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = job.status === activeTab;
-    const matchesDepartment = selectedDepartment.toLowerCase() === 'all' || job.department.toLowerCase() === selectedDepartment.toLowerCase();
-    const matchesType = selectedType.toLowerCase() === 'all' || job.type.toLowerCase() === selectedType.toLowerCase();
-    const matchesLocation = selectedLocation.toLowerCase() === 'all' || job.location.toLowerCase() === selectedLocation.toLowerCase();
+  // Fetch jobs from Firestore when the component mounts or activeTab changes
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-    return matchesSearch && matchesStatus && matchesDepartment && matchesType && matchesLocation;
+        // Query the "createjob" collection based on the active tab (status)
+        const jobsQuery = query(
+          collection(db, 'createjobs'),
+          where('status', '==', activeTab)
+        );
+        const querySnapshot = await getDocs(jobsQuery);
+
+        const fetchedJobs: Job[] = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            title: data.jobTitle || 'Untitled Job',
+            department: data.company || 'Unknown Department', // Use company as department (adjust as needed)
+            location: data.location || 'Not specified',
+            type: data.remote ? 'Remote' : 'On-site', // Map remote field to type (adjust as needed)
+            salary: data.salary || 'Not specified',
+            posted: data.createdAt?.toDate().toISOString().split('T')[0] || 'Unknown',
+            expires: data.deadline || 'Unknown',
+            status: data.status || 'active',
+            applicants: data.candidates?.length || 0,
+            description: data.description || 'No description available',
+            requirements: data.skills || [],
+            skills: data.skills || [],
+            company: data.company || 'Unknown',
+          };
+        });
+
+        setJobs(fetchedJobs);
+      } catch (err) {
+        console.error('Error fetching jobs from Firestore:', err);
+        setError('Failed to load jobs. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [activeTab]); // Re-fetch when the active tab changes
+
+  const filteredJobs = jobs.filter((job) => {
+    const matchesSearch =
+      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.department.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDepartment =
+      selectedDepartment.toLowerCase() === 'all' ||
+      job.department.toLowerCase() === selectedDepartment.toLowerCase();
+    const matchesType =
+      selectedType.toLowerCase() === 'all' ||
+      job.type.toLowerCase() === selectedType.toLowerCase();
+    const matchesLocation =
+      selectedLocation.toLowerCase() === 'all' ||
+      job.location.toLowerCase() === selectedLocation.toLowerCase();
+
+    return matchesSearch && matchesDepartment && matchesType && matchesLocation;
   });
 
   const containerVariants = {
@@ -237,7 +235,16 @@ const AdminJobs: React.FC = () => {
 
           {/* Jobs List */}
           <div className="space-y-4">
-            {filteredJobs.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent-primary)] mx-auto"></div>
+                <p className="mt-2 text-[var(--text-secondary)]">Loading jobs...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-[var(--error)]">{error}</p>
+              </div>
+            ) : filteredJobs.length === 0 ? (
               <div className="text-center py-12">
                 <ArchiveBoxIcon className="h-12 w-12 mx-auto text-[var(--text-secondary)]" />
                 <p className="mt-2 text-[var(--text-secondary)]">No jobs found</p>
