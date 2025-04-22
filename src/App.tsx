@@ -10,7 +10,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPasswordConfirm from './pages/ResetPasswordConfirmation';
-import Profile from './pages/Profile';
 import ApplicationForm from './pages/JobApplicationForm';
 import ApplicantOnBoarding from './pages/applicant/ApplicantOnboarding';
 import InterviewScheduler from './pages/applicant/InterviewScheduler';
@@ -80,7 +79,6 @@ const AppRoutes: React.FC = () => {
 
           {/* Applicant Routes */}
           <Route path="/applicant/apply/:jobId" element={<ApplicationForm />} />
-          <Route path="/applicant/profile" element={<Profile />} />
           <Route path="/applicant/onboarding" element={<ApplicantOnBoarding />} />
           <Route path="/applicant/scheduler" element={<InterviewScheduler />} />
 

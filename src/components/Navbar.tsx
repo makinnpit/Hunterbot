@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   MagnifyingGlassIcon,
-  MoonIcon,
-  SunIcon,
   BellIcon,
   ArrowDownIcon,
 } from '@heroicons/react/24/outline';
@@ -29,12 +27,9 @@ const Navbar: React.FC<NavbarProps> = ({
   initialNotifications = [],
 }) => {
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(localStorage.getItem('theme') === 'dark');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;

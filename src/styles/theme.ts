@@ -1,155 +1,143 @@
 import { createTheme } from '@mui/material/styles';
 
-// Custom color palette
+// Simplified futuristic color palette
 const colors = {
   primary: {
-    main: '#3b82f6', // Neon blue from App.css
-    light: '#60a5fa',
-    dark: '#2563eb',
-    contrastText: '#e2e8f0',
+    main: '#00D4FF', // Soft neon cyan for primary actions
+    light: '#4DEEFF',
+    dark: '#00A3CC',
+    contrastText: '#0A0A0A', // Near-black for contrast
   },
   secondary: {
-    main: '#9333ea', // Neon purple from App.css
-    light: '#a855f7',
-    dark: '#7e22ce',
-    contrastText: '#e2e8f0',
+    main: '#A1BFFA', // Soft lavender for secondary actions
+    light: '#C3D7FF',
+    dark: '#7F9CF5',
+    contrastText: '#0A0A0A',
   },
   error: {
-    main: '#ef4444',
-    light: '#f87171',
-    dark: '#dc2626',
+    main: '#FF5252', // Soft neon red for errors
+    light: '#FF8A80',
+    dark: '#C41C1C',
   },
   warning: {
-    main: '#f59e0b',
-    light: '#fbbf24',
-    dark: '#d97706',
+    main: '#FFAB00', // Soft neon orange for warnings
+    light: '#FFD149',
+    dark: '#C77C00',
   },
   info: {
-    main: '#3b82f6',
-    light: '#60a5fa',
-    dark: '#2563eb',
+    main: '#00D4FF', // Same as primary for consistency
+    light: '#4DEEFF',
+    dark: '#00A3CC',
   },
   success: {
-    main: '#10b981',
-    light: '#34d399',
-    dark: '#059669',
+    main: '#00E676', // Soft neon green for success
+    light: '#5EFF9B',
+    dark: '#00B34C',
   },
   background: {
-    default: '#0a0f24', // Dark navy from App.css
-    paper: 'rgba(15, 23, 42, 0.95)', // Semi-transparent dark from App.css
+    default: '#0A0A0A', // Solid near-black background
+    paper: '#151515', // Dark gray for paper surfaces
   },
   text: {
-    primary: '#e2e8f0', // Light text from App.css
-    secondary: '#94a3b8', // Muted text from App.css
+    primary: '#E0E0E0', // Light gray for primary text
+    secondary: '#A0A0A0', // Mid-gray for secondary text
   },
   grey: {
-    50: '#f9fafb',
-    100: '#f3f4f6',
-    200: '#e5e7eb',
-    300: '#d1d5db',
-    400: '#9ca3af',
-    500: '#6b7280',
-    600: '#4b5563',
-    700: '#374151',
-    800: '#1f2937',
-    900: '#111827',
+    50: '#1A1A1A',
+    100: '#2A2A2A',
+    200: '#3A3A3A',
+    300: '#4A4A4A',
+    400: '#5A5A5A',
+    500: '#6A6A6A',
+    600: '#7A7A7A',
+    700: '#8A8A8A',
+    800: '#9A9A9A',
+    900: '#B0B0B0',
   },
 };
 
-// Custom typography
+// Simplified typography for a futuristic look
 const typography = {
-  fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+  fontFamily: '"Inter", sans-serif', // Clean, modern font
   h1: {
-    fontSize: '2.5rem',
-    fontWeight: 700,
+    fontSize: '2.25rem',
+    fontWeight: 600,
     lineHeight: 1.2,
-    '@media (max-width: 600px)': {
-      fontSize: '2rem',
-    },
   },
   h2: {
     fontSize: '2rem',
-    fontWeight: 700,
-    lineHeight: 1.3,
-    '@media (max-width: 600px)': {
-      fontSize: '1.75rem',
-    },
+    fontWeight: 600,
+    lineHeight: 1.2,
   },
   h3: {
     fontSize: '1.75rem',
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 1.3,
-    '@media (max-width: 600px)': {
-      fontSize: '1.5rem',
-    },
   },
   h4: {
     fontSize: '1.5rem',
-    fontWeight: 600,
-    lineHeight: 1.4,
-    '@media (max-width: 600px)': {
-      fontSize: '1.25rem',
-    },
+    fontWeight: 500,
+    lineHeight: 1.3,
   },
   h5: {
     fontSize: '1.25rem',
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 1.4,
-    '@media (max-width: 600px)': {
-      fontSize: '1.125rem',
-    },
   },
   h6: {
     fontSize: '1rem',
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 1.4,
-    '@media (max-width: 600px)': {
-      fontSize: '0.875rem',
-    },
   },
   subtitle1: {
     fontSize: '1rem',
-    fontWeight: 500,
+    fontWeight: 400,
     lineHeight: 1.5,
   },
   subtitle2: {
     fontSize: '0.875rem',
-    fontWeight: 500,
+    fontWeight: 400,
     lineHeight: 1.5,
   },
   body1: {
     fontSize: '1rem',
-    lineHeight: 1.5,
+    lineHeight: 1.6,
   },
   body2: {
     fontSize: '0.875rem',
-    lineHeight: 1.5,
+    lineHeight: 1.6,
   },
   button: {
-    textTransform: 'none' as const,
+    textTransform: 'none' as 'none' | 'capitalize' | 'uppercase' | 'lowercase' | undefined,
     fontWeight: 500,
+    fontSize: '0.875rem',
   },
 };
 
-// Custom components
+// Simplified components with a futuristic yet minimalistic aesthetic
 const components = {
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: 8,
+        borderRadius: 6,
         padding: '8px 16px',
+        transition: 'all 0.3s ease',
       },
       contained: {
+        backgroundColor: '#00D4FF', // Solid neon cyan
+        color: '#0A0A0A',
         boxShadow: 'none',
         '&:hover': {
-          boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+          backgroundColor: '#4DEEFF',
+          boxShadow: '0 0 8px rgba(0, 212, 255, 0.5)', // Subtle glow on hover
         },
       },
       outlined: {
-        borderColor: 'rgba(59, 130, 246, 0.3)',
+        borderColor: 'rgba(0, 212, 255, 0.3)', // Subtle cyan border
+        color: '#00D4FF',
         '&:hover': {
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderColor: '#00D4FF',
+          backgroundColor: 'rgba(0, 212, 255, 0.05)',
         },
       },
     },
@@ -157,18 +145,24 @@ const components = {
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: 12,
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        borderRadius: 8,
+        backgroundColor: '#151515',
+        border: '1px solid rgba(0, 212, 255, 0.2)', // Minimal cyan border
+        boxShadow: 'none',
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          borderColor: 'rgba(0, 212, 255, 0.4)',
+        },
       },
     },
   },
   MuiPaper: {
     styleOverrides: {
       root: {
-        borderRadius: 12,
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        border: '1px solid rgba(59, 130, 246, 0.3)',
+        borderRadius: 8,
+        backgroundColor: '#151515',
+        border: '1px solid rgba(0, 212, 255, 0.2)',
+        boxShadow: 'none',
       },
     },
   },
@@ -176,25 +170,29 @@ const components = {
     styleOverrides: {
       root: {
         '& .MuiOutlinedInput-root': {
-          borderRadius: 8,
-          backgroundColor: 'rgba(30, 41, 59, 0.5)',
-          color: '#e2e8f0',
+          borderRadius: 6,
+          backgroundColor: '#1A1A1A',
+          color: '#E0E0E0',
           '& fieldset': {
-            borderColor: 'rgba(59, 130, 246, 0.3)',
+            borderColor: 'rgba(0, 212, 255, 0.2)',
           },
           '&:hover fieldset': {
-            borderColor: '#3b82f6',
+            borderColor: 'rgba(0, 212, 255, 0.4)',
           },
           '&.Mui-focused fieldset': {
-            borderColor: '#3b82f6',
-            boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
+            borderColor: '#00D4FF',
           },
         },
         '& .MuiInputLabel-root': {
-          color: '#94a3b8',
+          color: '#A0A0A0',
+          fontSize: '0.875rem',
         },
         '& .MuiInputLabel-root.Mui-focused': {
-          color: '#3b82f6',
+          color: '#00D4FF',
+        },
+        '& .MuiInputBase-input': {
+          color: '#E0E0E0',
+          fontSize: '0.875rem',
         },
       },
     },
@@ -203,10 +201,19 @@ const components = {
     styleOverrides: {
       root: {
         borderRadius: 6,
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-        color: '#e2e8f0',
+        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+        color: '#E0E0E0',
+        border: '1px solid rgba(0, 212, 255, 0.2)',
+        transition: 'all 0.3s ease',
         '&:hover': {
-          backgroundColor: 'rgba(59, 130, 246, 0.4)',
+          backgroundColor: 'rgba(0, 212, 255, 0.2)',
+          borderColor: 'rgba(0, 212, 255, 0.4)',
+        },
+        '& .MuiChip-deleteIcon': {
+          color: '#A0A0A0',
+          '&:hover': {
+            color: '#FF5252',
+          },
         },
       },
     },
@@ -214,9 +221,42 @@ const components = {
   MuiAlert: {
     styleOverrides: {
       root: {
-        borderRadius: 8,
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        color: '#ef4444',
+        borderRadius: 6,
+        backgroundColor: 'rgba(255, 82, 82, 0.1)',
+        color: '#E0E0E0',
+        border: '1px solid rgba(255, 82, 82, 0.2)',
+      },
+      standardSuccess: {
+        backgroundColor: 'rgba(0, 230, 118, 0.1)',
+        color: '#E0E0E0',
+        border: '1px solid rgba(0, 230, 118, 0.2)',
+        '& .MuiAlert-icon': {
+          color: '#00E676',
+        },
+      },
+      standardError: {
+        backgroundColor: 'rgba(255, 82, 82, 0.1)',
+        color: '#E0E0E0',
+        border: '1px solid rgba(255, 82, 82, 0.2)',
+        '& .MuiAlert-icon': {
+          color: '#FF5252',
+        },
+      },
+      standardWarning: {
+        backgroundColor: 'rgba(255, 171, 0, 0.1)',
+        color: '#E0E0E0',
+        border: '1px solid rgba(255, 171, 0, 0.2)',
+        '& .MuiAlert-icon': {
+          color: '#FFAB00',
+        },
+      },
+      standardInfo: {
+        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+        color: '#E0E0E0',
+        border: '1px solid rgba(0, 212, 255, 0.2)',
+        '& .MuiAlert-icon': {
+          color: '#00D4FF',
+        },
       },
     },
   },
@@ -228,7 +268,7 @@ const theme = createTheme({
   typography,
   components,
   shape: {
-    borderRadius: 8,
+    borderRadius: 6,
   },
   spacing: 8,
 });

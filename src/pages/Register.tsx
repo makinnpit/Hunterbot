@@ -1,18 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Alert,
-  InputAdornment,
-  IconButton,
-} from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, Alert, InputAdornment, IconButton } from '@mui/material';
 import { UserIcon, EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { Particles } from '@tsparticles/react';
+import { loadSlim } from '@tsparticles/slim';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
@@ -51,7 +44,6 @@ const Register: React.FC = () => {
     }
 
     try {
-      // Hardcode role as 'ADMIN' since only admins can register
       await register(formData.email, formData.password, formData.name, 'ADMIN');
       const redirectPath = user?.role === 'ADMIN' ? '/admin/home' : '/home';
       navigate(redirectPath);
@@ -61,6 +53,16 @@ const Register: React.FC = () => {
     }
   };
 
+  // Particle initialization
+  const particlesInit = useCallback(async (engine: any) => {
+    await loadSlim(engine);
+  }, []);
+
+  const particlesLoaded = useCallback(async (container: any) => {
+    console.log('Particles loaded:', container);
+  }, []);
+
+  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0, y: 50 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
@@ -76,7 +78,7 @@ const Register: React.FC = () => {
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)' },
+    hover: { scale: 1.05, boxShadow: '0 6px 16px rgba(34, 211, 238, 0.4)' },
     tap: { scale: 0.95 },
     pulse: {
       scale: [1, 1.02, 1],
@@ -98,48 +100,55 @@ const Register: React.FC = () => {
     tap: { scale: 0.9 },
   };
 
+  const linkVariants = {
+    hover: { scale: 1.05, color: '#22D3EE' },
+    tap: { scale: 0.95 },
+  };
+
   return (
     <Box
       sx={{
-        height: '100vh', // Use height instead of minHeight to prevent overflow
+        minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         px: { xs: 2, sm: 3 },
         width: '100%',
-        bgcolor: 'var(--background)',
+        bgcolor: '#0F172A',
         position: 'relative',
-        overflowY: 'auto', // Allow scrolling only when necessary
+        overflowY: 'auto',
       }}
     >
-      {/* Background Gradient Effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[var(--gradient-start)]/10 to-[var(--gradient-end)]/10 pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.1)_0%,transparent_70%)] pointer-events-none" />
+      
+      {/* Background Gradient with Hexagonal Pattern */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A] to-[#1E293B] pointer-events-none z-10" />
+      <div className="absolute inset-0 hexagon-overlay pointer-events-none opacity-20 z-10" />
 
-      <motion.div variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="z-20">
         <Paper
           elevation={6}
+          className="glowing-border"
           sx={{
             p: { xs: 3, sm: 4 },
             width: '100%',
             maxWidth: { xs: 340, sm: 400 },
             minWidth: { xs: 280 },
-            bgcolor: 'var(--card-background)',
-            backdropFilter: 'blur(16px)',
-            background: 'var(--card-background)/80',
-            border: '1px solid var(--glass-border)',
+            bgcolor: '#1E293B',
+            border: '1px solid rgba(34, 211, 238, 0.3)',
             borderRadius: '16px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            position: 'relative',
           }}
         >
           <Typography
             variant="h5"
             align="center"
-            className="gradient-text"
+            className="font-inter"
             sx={{
               mb: 1,
               fontWeight: 'bold',
               fontSize: { xs: '1.5rem', sm: '1.75rem' },
+              color: '#F8FAFC',
             }}
           >
             Admin Registration
@@ -147,9 +156,10 @@ const Register: React.FC = () => {
           <Typography
             variant="body2"
             align="center"
+            className="font-inter"
             sx={{
               mb: 3,
-              color: 'var(--text-secondary)',
+              color: '#BAE6FD',
               fontSize: '0.875rem',
             }}
           >
@@ -166,12 +176,14 @@ const Register: React.FC = () => {
                 severity="error"
                 sx={{
                   mb: 2,
-                  bgcolor: 'var(--error)/20',
-                  color: 'var(--error)',
+                  bgcolor: 'rgba(255,51,102,0.2)',
+                  color: '#F87171',
+                  border: '1px solid rgba(255,51,102,0.5)',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
+                  fontFamily: 'Inter, sans-serif',
                   '& .MuiAlert-icon': {
-                    color: 'var(--error)',
+                    color: '#F87171',
                   },
                 }}
               >
@@ -194,36 +206,29 @@ const Register: React.FC = () => {
                   startAdornment: (
                     <InputAdornment position="start">
                       <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
-                        <UserIcon className="h-5 w-5 text-[var(--text-secondary)]" />
+                        <UserIcon className="h-5 w-5 text-[#BAE6FD]" />
                       </motion.div>
                     </InputAdornment>
                   ),
                 }}
+                InputLabelProps={{
+                  style: { color: '#BAE6FD', fontFamily: 'Inter, sans-serif' },
+                }}
                 sx={{
                   '& .MuiInputBase-root': {
-                    bgcolor: 'var(--input-background)',
-                    color: 'var(--text-primary)',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      bgcolor: 'var(--input-hover-background)',
+                    color: '#F8FAFC',
+                    fontFamily: 'Inter, sans-serif',
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: '#22D3EE',
                     },
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--glass-border)',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--accent-primary)',
-                  },
-                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--accent-primary)',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'var(--text-secondary)',
-                    fontSize: '0.875rem',
-                  },
-                  '& .MuiInputLabel-root.Mui-focused': {
-                    color: 'var(--accent-primary)',
+                    '&:hover fieldset': {
+                      borderColor: '#38BDF8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#22D3EE',
+                    },
                   },
                 }}
               />
@@ -243,36 +248,29 @@ const Register: React.FC = () => {
                   startAdornment: (
                     <InputAdornment position="start">
                       <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
-                        <EnvelopeIcon className="h-5 w-5 text-[var(--text-secondary)]" />
+                        <EnvelopeIcon className="h-5 w-5 text-[#BAE6FD]" />
                       </motion.div>
                     </InputAdornment>
                   ),
                 }}
+                InputLabelProps={{
+                  style: { color: '#BAE6FD', fontFamily: 'Inter, sans-serif' },
+                }}
                 sx={{
                   '& .MuiInputBase-root': {
-                    bgcolor: 'var(--input-background)',
-                    color: 'var(--text-primary)',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      bgcolor: 'var(--input-hover-background)',
+                    color: '#F8FAFC',
+                    fontFamily: 'Inter, sans-serif',
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: '#22D3EE',
                     },
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--glass-border)',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--accent-primary)',
-                  },
-                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--accent-primary)',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'var(--text-secondary)',
-                    fontSize: '0.875rem',
-                  },
-                  '& .MuiInputLabel-root.Mui-focused': {
-                    color: 'var(--accent-primary)',
+                    '&:hover fieldset': {
+                      borderColor: '#38BDF8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#22D3EE',
+                    },
                   },
                 }}
               />
@@ -292,7 +290,7 @@ const Register: React.FC = () => {
                   startAdornment: (
                     <InputAdornment position="start">
                       <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
-                        <LockClosedIcon className="h-5 w-5 text-[var(--text-secondary)]" />
+                        <LockClosedIcon className="h-5 w-5 text-[#BAE6FD]" />
                       </motion.div>
                     </InputAdornment>
                   ),
@@ -305,40 +303,33 @@ const Register: React.FC = () => {
                       >
                         <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
                           {showPassword ? (
-                            <EyeSlashIcon className="h-5 w-5 text-[var(--text-secondary)]" />
+                            <EyeSlashIcon className="h-5 w-5 text-[#BAE6FD] hover:text-[#22D3EE]" />
                           ) : (
-                            <EyeIcon className="h-5 w-5 text-[var(--text-secondary)]" />
+                            <EyeIcon className="h-5 w-5 text-[#BAE6FD] hover:text-[#22D3EE]" />
                           )}
                         </motion.div>
                       </IconButton>
                     </InputAdornment>
                   ),
                 }}
+                InputLabelProps={{
+                  style: { color: '#BAE6FD', fontFamily: 'Inter, sans-serif' },
+                }}
                 sx={{
                   '& .MuiInputBase-root': {
-                    bgcolor: 'var(--input-background)',
-                    color: 'var(--text-primary)',
-                    borderRadius: '8px',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      bgcolor: 'var(--input-hover-background)',
+                    color: '#F8FAFC',
+                    fontFamily: 'Inter, sans-serif',
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: '#22D3EE',
                     },
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--glass-border)',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--accent-primary)',
-                  },
-                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--accent-primary)',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'var(--text-secondary)',
-                    fontSize: '0.875rem',
-                  },
-                  '& .MuiInputLabel-root.Mui-focused': {
-                    color: 'var(--accent-primary)',
+                    '&:hover fieldset': {
+                      borderColor: '#38BDF8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#22D3EE',
+                    },
                   },
                 }}
               />
@@ -350,6 +341,7 @@ const Register: React.FC = () => {
                 variants={buttonVariants}
                 whileHover="hover"
                 whileTap="tap"
+                whileFocus="pulse"
                 type="submit"
                 fullWidth
                 disabled={loading}
@@ -357,25 +349,37 @@ const Register: React.FC = () => {
                   mt: 2,
                   mb: 2,
                   py: 1.5,
-                  bgcolor: 'var(--accent-primary)',
-                  color: 'white',
+                  background: 'linear-gradient(to right, #22D3EE, #38BDF8)',
+                  color: '#0F172A',
                   borderRadius: '8px',
                   fontWeight: 'medium',
                   textTransform: 'none',
                   fontSize: '1rem',
+                  fontFamily: 'Inter, sans-serif',
+                  position: 'relative',
+                  overflow: 'hidden',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    bgcolor: '#7c3aed',
-                    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                    boxShadow: '0 0 24px rgba(34, 211, 238, 0.9)',
                   },
                   '&:disabled': {
-                    bgcolor: 'var(--text-secondary)',
-                    color: 'var(--background)',
+                    opacity: 0.7,
                     cursor: 'not-allowed',
                   },
                 }}
               >
-                {loading ? 'Registering...' : 'Register Admin'}
+                <span className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(34,211,238,0.3),transparent)] animate-pulse-effect" />
+                {loading ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg className="animate-spin h-5 w-5 mr-2 text-[#0F172A]" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    Registering...
+                  </Box>
+                ) : (
+                  'Register Admin'
+                )}
               </Button>
             </motion.div>
 
@@ -383,27 +387,93 @@ const Register: React.FC = () => {
               <Typography
                 variant="body2"
                 align="center"
+                className="font-inter"
                 sx={{
-                  color: 'var(--text-secondary)',
+                  color: '#BAE6FD',
                   fontSize: '0.875rem',
                 }}
               >
                 Already have an account?{' '}
-                <Link
-                  to="/login"
-                  style={{
-                    color: 'var(--accent-primary)',
-                    textDecoration: 'none',
-                    fontWeight: 'medium',
-                  }}
-                >
-                  Log In
+                <Link to="/login">
+                  <motion.span
+                    variants={linkVariants}
+                    whileHover="hover"
+                    whileTap="tap"
+                    style={{
+                      color: '#22D3EE',
+                      textDecoration: 'none',
+                      fontWeight: 'medium',
+                    }}
+                  >
+                    Log In
+                  </motion.span>
                 </Link>
               </Typography>
             </motion.div>
           </form>
         </Paper>
       </motion.div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        .font-inter {
+          font-family: 'Inter', sans-serif;
+        }
+
+        .hexagon-overlay {
+          background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><g fill="none" stroke="#22D3EE" stroke-opacity="0.2"><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(20, 20) scale(0.8)"/><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(80, 60) scale(0.6)"/><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(120, 30) scale(0.5)"/><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(180, 80) scale(0.7)"/><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(250, 40) scale(0.6)"/></g></svg>');
+          background-size: 300px 300px;
+          background-repeat: repeat;
+        }
+
+        .glowing-border {
+          position: relative;
+          transition: all 0.3s ease;
+        }
+
+        .glowing-border:hover {
+          box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+        }
+
+        .glowing-border::before {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          background: linear-gradient(
+            45deg,
+            rgba(34, 211, 238, 0.3),
+            rgba(56, 189, 248, 0.3),
+            rgba(34, 211, 238, 0.3)
+          );
+          z-index: -1;
+          border-radius: 14px;
+          animation: borderGlow 3s linear infinite;
+        }
+
+        @keyframes borderGlow {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+
+        @keyframes pulseEffect {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-pulse-effect {
+          animation: pulseEffect 2s infinite;
+        }
+      `}</style>
     </Box>
   );
 };
