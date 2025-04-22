@@ -18,6 +18,7 @@ import CandidatesList from './pages/admin/CandidatesList';
 import InterviewResults from './pages/admin/InterviewResults';
 import CreateJob from './pages/admin/CreateJob';
 import AdminJobs from './pages/admin/AdminJobs';
+import Settings from './pages/admin/Settings'; 
 
 // Types
 interface InterviewResultsWrapperProps {
@@ -25,9 +26,7 @@ interface InterviewResultsWrapperProps {
   candidateId?: string;
 }
 
-interface CreateJobWrapperProps {
-  // Add any props if needed
-}
+interface CreateJobWrapperProps {}
 
 // Wrapper Components
 const InterviewResultsWrapper: React.FC = () => {
@@ -52,7 +51,6 @@ const AppRoutes: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Animation variants
   const pageVariants = {
     initial: { opacity: 0, x: 50 },
     animate: { opacity: 1, x: 0 },
@@ -91,6 +89,7 @@ const AppRoutes: React.FC = () => {
             element={<CandidatesList onSelectCandidate={(id) => navigate(`/admin/interview/${id}`)} />}
           />
           <Route path="/admin/interview/:candidateId" element={<InterviewResultsWrapper />} />
+          <Route path="/admin/settings" element={<Settings />} /> 
 
           {/* Fallback Route */}
           <Route path="*" element={<Navigate to="/login" replace />} />
