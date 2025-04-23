@@ -60,8 +60,9 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, addDoc, serverTimestamp, getDocs, doc, getDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface CreateJobModalProps {
   open: boolean;
@@ -136,7 +137,7 @@ const companies: Company[] = [
   },
   {
     name: 'Google',
-    jobs: ['Software Engineer', 'Product Manager', 'Data Scientist', 'UX Designer', 'DevOps Engineer'],
+    jobs: ['Software Engineer', 'Software Developer', 'Product Manager', 'Data Scientist', 'UX Designer', 'DevOps Engineer'],
   },
   {
     name: 'Microsoft',
@@ -218,9 +219,10 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ open, onClose }): JSX.E
   const [previewData, setPreviewData] = useState<any>(null);
   const [useAI, setUseAI] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { sender: 'Bot', text: 'Hi! I\'m here to help you create a job posting. Please provide the job title and company in JSON format, like this:\n{\n  "jobTitle": "Software Engineer",\n  "company": "Google"\n}' },
+    { sender: 'Bot', text: 'Hi! I\'m here to help you create a job posting. Just tell me the job role and company, for example: "I need a Software Engineer at Google" or "Looking for a Data Scientist position with Microsoft".' },
   ]);
   const [userPrompt, setUserPrompt] = useState('');
+  const [awaitingClarification, setAwaitingClarification] = useState<'jobTitle' | 'company' | null>(null);
 
   const languages = ['English', 'Spanish', 'French', 'German'];
   const timezones = ['UTC', 'EST', 'PST', 'CET'];
@@ -425,24 +427,109 @@ Requirements:
     }
   };
 
-  const parseUserPrompt = (prompt: string): { jobTitle: string; company: string } => {
-    try {
-      const parsed = JSON.parse(prompt);
-      if (!parsed.jobTitle || !parsed.company) {
-        throw new Error('Missing jobTitle or company in JSON input.');
+  const extractJobAndCompany = (prompt: string): { jobTitle: string | null; company: string | null } => {
+    const promptLower = prompt.toLowerCase();
+    let jobTitle: string | null = null;
+    let company: string | null = null;
+
+    const companyNames = companies.map(c => c.name.toLowerCase());
+    const allJobs = companies.flatMap(c => c.jobs.map(job => job.toLowerCase()));
+    const jobSynonyms: { [key: string]: string } = {
+      'software developer': 'Software Engineer',
+      'sde': 'Software Engineer',
+      'ml engineer': 'Machine Learning Engineer',
+      'ux designer': 'Product Designer',
+      'frontend engineer': 'Frontend Engineer',
+    };
+
+    // Step 1: Look for company names in the prompt
+    for (const companyName of companyNames) {
+      if (promptLower.includes(companyName)) {
+        company = companies.find(c => c.name.toLowerCase() === companyName)?.name || null;
+        break;
       }
-      return {
-        jobTitle: parsed.jobTitle,
-        company: parsed.company,
-      };
-    } catch (error) {
-      throw new Error('Invalid JSON format. Please provide the job title and company in JSON format, like this:\n{\n  "jobTitle": "Software Engineer",\n  "company": "Google"\n}');
     }
+
+    // Step 2: Look for job titles in the prompt, considering synonyms
+    for (const job of allJobs) {
+      if (promptLower.includes(job)) {
+        jobTitle = companies.flatMap(c => c.jobs).find(j => j.toLowerCase() === job) || null;
+        break;
+      }
+    }
+
+    // Step 3: Check for synonyms if no direct job title match
+    if (!jobTitle) {
+      for (const [synonym, actualJob] of Object.entries(jobSynonyms)) {
+        if (promptLower.includes(synonym)) {
+          jobTitle = actualJob;
+          break;
+        }
+      }
+    }
+
+    // Step 4: If company is found but job title isn't, try to extract job title using prepositions
+    if (company && !jobTitle) {
+      const companyIndex = promptLower.indexOf(company.toLowerCase());
+      const beforeCompany = promptLower.substring(0, companyIndex).trim();
+      const afterCompany = promptLower.substring(companyIndex + company.length).trim();
+
+      const prepositions = ['for a', 'as a', 'position at', 'role at', 'with', 'at'];
+      for (const prep of prepositions) {
+        if (beforeCompany.includes(prep)) {
+          const potentialJob = beforeCompany.split(prep)[1]?.trim();
+          if (potentialJob) {
+            const matchedJob = allJobs.find(job => potentialJob.includes(job)) || Object.keys(jobSynonyms).find(syn => potentialJob.includes(syn));
+            if (matchedJob) {
+              jobTitle = allJobs.includes(matchedJob) 
+                ? companies.flatMap(c => c.jobs).find(j => j.toLowerCase() === matchedJob) || null 
+                : jobSynonyms[matchedJob] || null;
+            }
+          }
+        }
+        if (afterCompany.includes(prep)) {
+          const potentialJob = afterCompany.split(prep)[0]?.trim();
+          if (potentialJob) {
+            const matchedJob = allJobs.find(job => potentialJob.includes(job)) || Object.keys(jobSynonyms).find(syn => potentialJob.includes(syn));
+            if (matchedJob) {
+              jobTitle = allJobs.includes(matchedJob) 
+                ? companies.flatMap(c => c.jobs).find(j => j.toLowerCase() === matchedJob) || null 
+                : jobSynonyms[matchedJob] || null;
+            }
+          }
+        }
+      }
+    }
+
+    // Step 5: If job title is found but company isn't, try to extract company
+    if (jobTitle && !company) {
+      const jobIndex = promptLower.indexOf(jobTitle.toLowerCase());
+      const beforeJob = promptLower.substring(0, jobIndex).trim();
+      const afterJob = promptLower.substring(jobIndex + jobTitle.length).trim();
+
+      const companyIndicators = ['at', 'with', 'for'];
+      for (const indicator of companyIndicators) {
+        if (afterJob.includes(indicator)) {
+          const potentialCompany = afterJob.split(indicator)[1]?.trim();
+          if (potentialCompany && companyNames.includes(potentialCompany.toLowerCase())) {
+            company = companies.find(c => c.name.toLowerCase() === potentialCompany.toLowerCase())?.name || null;
+          }
+        }
+        if (beforeJob.includes(indicator)) {
+          const potentialCompany = beforeJob.split(indicator)[1]?.trim();
+          if (potentialCompany && companyNames.includes(potentialCompany.toLowerCase())) {
+            company = companies.find(c => c.name.toLowerCase() === potentialCompany.toLowerCase())?.name || null;
+          }
+        }
+      }
+    }
+
+    return { jobTitle, company };
   };
 
   const autoCreateJob = async (jobTitle: string, company: string) => {
     setLoadingAI(true);
-    setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Creating job posting for you...' }]);
+    setChatMessages((prev) => [...prev, { sender: 'Bot', text: `Creating job posting for ${jobTitle} at ${company}...` }]);
 
     try {
       // Step 1: Validate company and job title
@@ -462,11 +549,22 @@ Requirements:
         const generatedDetails = await generateJobDetailsWithGemini(jobTitle, company);
         description = generatedDetails.description;
         skills = generatedDetails.skills;
+
+        // Validate generated description
+        if (!description.toLowerCase().includes(jobTitle.toLowerCase()) || !description.toLowerCase().includes(company.toLowerCase())) {
+          throw new Error('Generated description does not match the job title or company.');
+        }
       } catch (error) {
         setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Failed to generate description and skills. Using defaults.' }]);
       }
 
-      // Step 3: Populate formData with defaults and generated details
+      // Step 3: Set tailored default values based on job title and company
+      const isSeniorRole = jobTitle.toLowerCase().includes('senior') || jobTitle.toLowerCase().includes('lead');
+      const isTechGiant = ['Google', 'Microsoft', 'Amazon', 'Meta', 'Apple'].includes(company);
+      const salaryRange = isSeniorRole ? (isTechGiant ? '$150,000 - $200,000' : '$100,000 - $150,000') : (isTechGiant ? '$100,000 - $150,000' : '$80,000 - $120,000');
+      const experienceLevel = isSeniorRole ? 'Senior' : 'Mid Level';
+      const location = isTechGiant ? `${company} Headquarters` : 'Remote';
+
       const defaultFormData: FormData = {
         jobTitle,
         company,
@@ -476,9 +574,9 @@ Requirements:
         description,
         customQuestions: '',
         skills,
-        experience: 'Mid Level',
-        salary: 'Competitive',
-        location: 'Remote',
+        experience: experienceLevel,
+        salary: salaryRange,
+        location,
         remote: true,
         assessment: false,
         candidates: [],
@@ -496,10 +594,10 @@ Requirements:
       setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Generating interview questions...' }]);
       const generatedQuestions = await generateQuestionsWithGemini(
         jobTitle,
-        ['technical', 'behavioral'], // Default question types
-        'intermediate', // Default difficulty
-        5, // Default question count
-        3 // Default complexity
+        ['technical', 'behavioral'],
+        'intermediate',
+        5,
+        3
       );
 
       const formattedQuestions = generatedQuestions.map((q, index) =>
@@ -517,23 +615,36 @@ Requirements:
         customQuestions: formattedQuestions,
       }));
 
-      // Step 5: Create the job
-      setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Finalizing job creation...' }]);
-      const sanitizedJobData = Object.fromEntries(
-        Object.entries({
-          ...defaultFormData,
-          company,
-          generatedQuestions: generatedQuestions.map(q => q.question),
-          customQuestions: formattedQuestions,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          status: 'active',
-        }).filter(([_, value]) => value !== undefined)
-      );
+      // Step 5: Save to Firestore "createjobs" collection
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Saving job to database...' }]);
+      const jobData = {
+        job_title: jobTitle,
+        company,
+        deadline: defaultFormData.deadline,
+        language: defaultFormData.language,
+        timezone: defaultFormData.timezone,
+        description,
+        custom_questions: formattedQuestions,
+        skills,
+        experience: experienceLevel,
+        salary: salaryRange,
+        location,
+        remote: true,
+        assessment: false,
+        candidates: [],
+        interview_rounds: 1,
+        coding_challenge: false,
+        system_design: false,
+        pair_programming: false,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        status: 'active',
+      };
 
-      const docRef = await addDoc(collection(db, 'createjobs'), sanitizedJobData);
+      const docRef = await addDoc(collection(db, 'createjobs'), jobData);
+      const jobId = docRef.id;
 
-      setChatMessages((prev) => [...prev, { sender: 'Bot', text: `Job created successfully! Job ID: ${docRef.id}` }]);
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: `Job created successfully! Job ID: ${jobId}` }]);
       setTimeout(() => {
         onClose();
         navigate('/admin/jobs');
@@ -551,13 +662,84 @@ Requirements:
 
     setChatMessages((prev) => [...prev, { sender: 'User', text: userPrompt }]);
 
-    try {
-      const { jobTitle, company } = parseUserPrompt(userPrompt);
-      await autoCreateJob(jobTitle, company);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred. Please try again.';
-      setChatMessages((prev) => [...prev, { sender: 'Bot', text: errorMessage }]);
+    if (awaitingClarification) {
+      const allJobs = companies.flatMap(c => c.jobs);
+      const companyNames = companies.map(c => c.name);
+
+      if (awaitingClarification === 'jobTitle') {
+        const jobTitle = userPrompt.trim();
+        const jobSynonyms: { [key: string]: string } = {
+          'software developer': 'Software Engineer',
+          'sde': 'Software Engineer',
+          'ml engineer': 'Machine Learning Engineer',
+          'ux designer': 'Product Designer',
+          'frontend engineer': 'Frontend Engineer',
+        };
+        let matchedJob = allJobs.find(job => job.toLowerCase() === jobTitle.toLowerCase());
+        if (!matchedJob) {
+          const synonymMatch = Object.keys(jobSynonyms).find(syn => jobTitle.toLowerCase().includes(syn));
+          if (synonymMatch) matchedJob = jobSynonyms[synonymMatch];
+        }
+
+        if (matchedJob) {
+          setAwaitingClarification(null);
+          const companyMatch = chatMessages[chatMessages.length - 2].text.match(/company name \((.*?)\)/);
+          const company = companyMatch ? companyMatch[1] : null;
+          if (company) {
+            await autoCreateJob(matchedJob, company);
+          } else {
+            setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'I still need the company name. Which company is this job for?' }]);
+            setAwaitingClarification('company');
+          }
+        } else {
+          const similarJobs = allJobs.filter(job => job.toLowerCase().includes(jobTitle.toLowerCase()));
+          const suggestion = similarJobs.length > 0 
+            ? ` Did you mean one of these: ${similarJobs.join(', ')}?`
+            : ` Available job titles are: ${allJobs.join(', ')}.`;
+          setChatMessages((prev) => [...prev, { sender: 'Bot', text: `I couldn't find the job title "${jobTitle}" in my list.${suggestion} Please try again.` }]);
+        }
+      } else if (awaitingClarification === 'company') {
+        const company = userPrompt.trim();
+        const matchedCompany = companyNames.find(c => c.toLowerCase() === company.toLowerCase());
+        if (matchedCompany) {
+          setAwaitingClarification(null);
+          const jobTitleMatch = chatMessages[chatMessages.length - 2].text.match(/job title \((.*?)\)/);
+          const jobTitle = jobTitleMatch ? jobTitleMatch[1] : null;
+          if (jobTitle) {
+            await autoCreateJob(jobTitle, matchedCompany);
+          } else {
+            setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'I still need the job title. What role are you creating this job for?' }]);
+            setAwaitingClarification('jobTitle');
+          }
+        } else {
+          const similarCompanies = companyNames.filter(c => c.toLowerCase().includes(company.toLowerCase()));
+          const suggestion = similarCompanies.length > 0 
+            ? ` Did you mean one of these: ${similarCompanies.join(', ')}?`
+            : ` Available companies are: ${companyNames.join(', ')}.`;
+          setChatMessages((prev) => [...prev, { sender: 'Bot', text: `I couldn't find the company "${company}" in my list.${suggestion} Please try again.` }]);
+        }
+      }
+      setUserPrompt('');
+      return;
     }
+
+    const { jobTitle, company } = extractJobAndCompany(userPrompt);
+
+    if (jobTitle && company) {
+      await autoCreateJob(jobTitle, company);
+    } else if (jobTitle) {
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: `I understood the job title (${jobTitle}), but I need the company name. Which company is this job for?` }]);
+      setAwaitingClarification('company');
+    } else if (company) {
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: `I understood the company name (${company}), but I need the job title. What role are you creating this job for?` }]);
+      setAwaitingClarification('jobTitle');
+    } else {
+      const allJobs = companies.flatMap(c => c.jobs);
+      const companyNames = companies.map(c => c.name);
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: `I couldn't understand the job title or company from your message. Please provide both, for example: "I need a Software Engineer at Google". Available companies: ${companyNames.join(', ')}. Available job titles: ${allJobs.join(', ')}.` }]);
+    }
+
+    setUserPrompt('');
   };
 
   const handleNext = async () => {
@@ -686,18 +868,32 @@ Requirements:
     try {
       setIsLoading(true);
 
-      const sanitizedJobData = Object.fromEntries(
-        Object.entries({
-          ...formData,
-          company: selectedCompany,
-          generatedQuestions: questions,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          status: 'active',
-        }).filter(([_, value]) => value !== undefined)
-      );
+      const jobData = {
+        job_title: formData.jobTitle,
+        company: selectedCompany,
+        deadline: formData.deadline,
+        language: formData.language,
+        timezone: formData.timezone,
+        description: formData.description,
+        custom_questions: formData.customQuestions,
+        skills: formData.skills,
+        experience: formData.experience,
+        salary: formData.salary,
+        location: formData.location,
+        remote: formData.remote,
+        assessment: formData.assessment,
+        candidates: formData.candidates,
+        interview_rounds: formData.interviewRounds,
+        coding_challenge: formData.codingChallenge,
+        system_design: formData.systemDesign,
+        pair_programming: formData.pairProgramming,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        status: 'active',
+      };
 
-      const docRef = await addDoc(collection(db, 'createjobs'), sanitizedJobData);
+      const docRef = await addDoc(collection(db, 'createjobs'), jobData);
+      const jobId = docRef.id;
 
       setSuccessMessage('Job created successfully!');
       setTimeout(() => {
@@ -824,7 +1020,7 @@ Requirements:
                   onChange={(e) => {
                     setUseAI(e.target.checked);
                     setActiveStep(0);
-                    setChatMessages([{ sender: 'Bot', text: 'Hi! I\'m here to help you create a job posting. Please provide the job title and company in JSON format, like this:\n{\n  "jobTitle": "Software Engineer",\n  "company": "Google"\n}' }]);
+                    setChatMessages([{ sender: 'Bot', text: 'Hi! I\'m here to help you create a job posting. Just tell me the job role and company, for example: "I need a Software Engineer at Google" or "Looking for a Data Scientist position with Microsoft".' }]);
                   }}
                   sx={{
                     '& .MuiSwitch-switchBase.Mui-checked': {
@@ -909,7 +1105,7 @@ Requirements:
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
                   fullWidth
-                  placeholder='Enter JSON, e.g., {"jobTitle": "Software Engineer", "company": "Google"}'
+                  placeholder='Tell me the job role and company (e.g., "I need a Software Engineer at Google")'
                   value={userPrompt}
                   onChange={(e) => setUserPrompt(e.target.value)}
                   sx={{
@@ -933,7 +1129,7 @@ Requirements:
                     '&:hover': { bgcolor: '#7c3aed' },
                   }}
                 >
-                  {loadingAI ? <CircularProgress size={20} /> : 'Create Job'}
+                  {loadingAI ? <CircularProgress size={20} /> : 'Send'}
                 </Button>
               </Box>
             </Box>
@@ -1218,7 +1414,7 @@ Requirements:
                               value={level.value}
                               sx={{
                                 color: '#f3f4f6',
-                                borderColor: '#4 FocalLength5563',
+                                borderColor: '#4b5563',
                                 '&.Mui-selected': {
                                   bgcolor: level.color,
                                   color: '#ffffff',

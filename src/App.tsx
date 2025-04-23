@@ -77,7 +77,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/admin/settings" element={<Settings />} /> 
 
           {/* Fallback Route */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/admin/home" replace />} />
         </Routes>
       </motion.div>
     </AnimatePresence>
