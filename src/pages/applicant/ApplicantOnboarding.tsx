@@ -10,7 +10,6 @@ import {
   ListItem,
   ListItemText,
   Avatar,
-  CircularProgress,
   Alert,
   Stepper,
   Step,
@@ -19,7 +18,6 @@ import {
 } from '@mui/material';
 import { ChatBubbleLeftIcon, ArrowRightIcon, HomeIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface ChatMessage {
   sender: 'HunterAI' | 'User';
@@ -30,7 +28,6 @@ interface ChatMessage {
 const steps = ['Welcome', 'Platform Guide', 'Interview Prep', 'Try a Sample'];
 
 const ApplicantOnBoarding: React.FC = () => {
-  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -40,10 +37,6 @@ const ApplicantOnBoarding: React.FC = () => {
   const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
-    if (!user || user.role !== 'APPLICANT') {
-      navigate('/login');
-      return;
-    }
     // Initialize with welcome message
     setMessages([
       {
@@ -52,7 +45,7 @@ const ApplicantOnBoarding: React.FC = () => {
         options: ['Let’s get started!', 'I’m not ready yet.'],
       },
     ]);
-  }, [user, navigate]);
+  }, []);
 
   const handleOptionClick = (option: string) => {
     setMessages((prev) => [
@@ -153,14 +146,6 @@ const ApplicantOnBoarding: React.FC = () => {
     tap: { scale: 0.95 },
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress size={40} color="primary" />
-      </Box>
-    );
-  }
-
   return (
     <Box
       sx={{
@@ -235,7 +220,7 @@ const ApplicantOnBoarding: React.FC = () => {
                       ml: msg.sender === 'User' ? 2 : 0,
                     }}
                   >
-                    {msg.sender === 'HunterAI' ? 'H' : user?.name?.[0]?.toUpperCase() || 'U'}
+                    {msg.sender === 'HunterAI' ? 'H' : 'U'}
                   </Avatar>
                   <Paper
                     sx={{

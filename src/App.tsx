@@ -6,19 +6,13 @@ import { AuthProvider } from './contexts/AuthContext';
 import theme from './styles/theme';
 
 // Pages
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPasswordConfirm from './pages/ResetPasswordConfirmation';
 import ApplicationForm from './pages/JobApplicationForm';
 import ApplicantOnBoarding from './pages/applicant/ApplicantOnboarding';
-import InterviewScheduler from './pages/applicant/InterviewScheduler';
 import AdminHome from './pages/admin/Dashboard';
 import CandidatesList from './pages/admin/CandidatesList';
-import InterviewResults from './pages/admin/InterviewResults';
 import CreateJob from './pages/admin/CreateJob';
 import AdminJobs from './pages/admin/AdminJobs';
-import Settings from './pages/admin/Settings'; 
+import Settings from './pages/admin/Settings';
 
 // Types
 interface InterviewResultsWrapperProps {
@@ -28,11 +22,7 @@ interface InterviewResultsWrapperProps {
 
 interface CreateJobWrapperProps {}
 
-// Wrapper Components
-const InterviewResultsWrapper: React.FC = () => {
-  const { candidateId } = useParams<InterviewResultsWrapperProps>();
-  return <InterviewResults candidateId={Number(candidateId)} />;
-};
+
 
 const CreateJobWrapper: React.FC = () => {
   const [open, setOpen] = React.useState(true);
@@ -69,16 +59,12 @@ const AppRoutes: React.FC = () => {
       >
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
+
           <Route path="/" element={<Navigate to="/login" replace />} />
 
           {/* Applicant Routes */}
           <Route path="/applicant/apply/:jobId" element={<ApplicationForm />} />
           <Route path="/applicant/onboarding" element={<ApplicantOnBoarding />} />
-          <Route path="/applicant/scheduler" element={<InterviewScheduler />} />
 
           {/* Admin Routes */}
           <Route path="/admin/home" element={<AdminHome />} />
@@ -88,7 +74,6 @@ const AppRoutes: React.FC = () => {
             path="/admin/candidates"
             element={<CandidatesList onSelectCandidate={(id) => navigate(`/admin/interview/${id}`)} />}
           />
-          <Route path="/admin/interview/:candidateId" element={<InterviewResultsWrapper />} />
           <Route path="/admin/settings" element={<Settings />} /> 
 
           {/* Fallback Route */}

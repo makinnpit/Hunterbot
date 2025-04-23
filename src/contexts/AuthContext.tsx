@@ -1,24 +1,28 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser
+} from 'firebase/auth';
 
-interface User {
-  id: string;
-  email: string;
-  role: 'ADMIN' | 'RECRUITER' | 'APPLICANT';
-  name: string;
+interface User extends FirebaseUser {
+  name?: string;
+  role?: 'ADMIN' | 'RECRUITER' | 'APPLICANT';
 }
 
 interface AuthContextType {
+  currentUser: User | null;
   user: User | null;
   loading: boolean;
-  error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  isAuthenticated: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -28,95 +32,48 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const auth = getAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Validate token and fetch user data
-      validateToken(token);
-    } else {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user as User);
       setLoading(false);
-    }
-  }, []);
+    });
 
-  const validateToken = async (token: string) => {
-    try {
-      const response = await axios.get('/api/auth/validate', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser(response.data.user);
-    } catch (err) {
-      localStorage.removeItem('token');
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+    return unsubscribe;
+  }, [auth]);
+
+  const signup = async (email: string, password: string) => {
+    await createUserWithEmailAndPassword(auth, email, password);
   };
 
   const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.post('/api/auth/login', { email, password });
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      setUser(user);
-    } catch (err) {
-      setError('Invalid email or password');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (name: string, email: string, password: string, role: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.post('/api/auth/register', {
-        name,
-        email,
-        password,
-        role
-      });
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      setUser(user);
-    } catch (err) {
-      setError('Registration failed');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    await signInWithEmailAndPassword(auth, email, password);
   };
 
   const logout = async () => {
-    try {
-      setLoading(true);
-      await axios.post('/api/auth/logout');
-      localStorage.removeItem('token');
-      setUser(null);
-    } catch (err) {
-      setError('Logout failed');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    await signOut(auth);
   };
 
   const value = {
-    user,
+    currentUser,
+    user: currentUser,
     loading,
-    error,
     login,
-    register,
-    logout,
-    isAuthenticated: !!user
+    signup,
+    logout
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
 }; 

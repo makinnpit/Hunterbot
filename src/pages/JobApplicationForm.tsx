@@ -4,15 +4,13 @@ import { Box, Paper, Typography, TextField, Button, Grid, InputAdornment, Alert 
 import { UserIcon, EnvelopeIcon, PhoneIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 
 const JobApplicationForm: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: '',
+    email: '',
     phone: '',
     resume: null as File | null,
   });
@@ -76,17 +74,6 @@ const JobApplicationForm: React.FC = () => {
       setLoading(false);
     }
   };
-
-  if (!user) {
-    return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography variant="h6">Please log in to apply for a job.</Typography>
-        <Button variant="contained" onClick={() => navigate('/login')}>
-          Log In
-        </Button>
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4, bgcolor: 'background.default' }}>

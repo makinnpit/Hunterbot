@@ -1,34 +1,37 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   PlusIcon, 
   BriefcaseIcon, 
-  UserIcon, 
-  ChartBarIcon,
-  ArrowTrendingUpIcon,
-  UserGroupIcon,
-  ClockIcon,
-  CalendarIcon,
-  ArrowDownIcon,
+  UserGroupIcon, 
+  ClockIcon, 
+  CalendarIcon, 
+  XMarkIcon, 
+  Bars3Icon, 
+  ArrowDownTrayIcon, 
   ArrowUpIcon,
-  ChatBubbleLeftRightIcon,
-  XMarkIcon,
-  PaperAirplaneIcon,
-  Bars3Icon,
-  ChevronLeftIcon,
-  MoonIcon,
+  ArrowDownIcon,
+  ArrowPathRoundedSquareIcon,
   SunIcon,
-  ArrowDownTrayIcon,
-  ArrowTrendingDownIcon,
+  MoonIcon,
+  LightBulbIcon,
+  QuestionMarkCircleIcon,
+  PlayIcon,
+  ChartBarIcon,
+  DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import Navbar from '../../components/Navbar';
 import axios from 'axios';
-import { Button } from '@mui/material';
-import { Particles } from '@tsparticles/react';
-import { loadSlim } from '@tsparticles/slim';
+import { Button, Menu, MenuItem, Tooltip as MuiTooltip } from '@mui/material';
+import { db } from '../../firebase/firebaseConfig';
+import { collection, getDocs, doc, getDoc, query, where, updateDoc } from 'firebase/firestore';
+import { debounce } from 'lodash';
+import { TypeAnimation } from 'react-type-animation';
+import { saveAs } from 'file-saver';
+import html2canvas from 'html2canvas';
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -37,159 +40,379 @@ interface DashboardProps {
   brandName?: string;
 }
 
-interface ChatMessage {
-  sender: 'user' | 'bot';
-  message: string;
-}
-
 interface Job {
-  id: number;
+  id: string;
   title: string;
   department: string;
   applicants: number;
   status: string;
   posted: string;
+  screeningProgress?: number; // New field for progress
+}
+
+interface Interview {
+  id: number;
+  candidate: string;
+  position: string;
+  time: string;
+  date: string;
+}
+
+interface Notification {
+  id: number;
+  message: string;
+  time: string;
+  link: string;
+}
+
+interface Stats {
+  timeToHire: string;
+  hiringRate: string;
+  hiringRateLastMonth?: string; // For comparison
+}
+
+interface HunterMessage {
+  sender: 'hunter' | 'user';
+  message: string;
+  type?: 'info' | 'success' | 'warning' | 'error';
+}
+
+interface ChatFeature {
+  id: string;
+  icon: React.ReactNode;
+  label: string;
+  action: () => void;
+}
+
+interface ActionResponse {
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  action?: () => void;
+}
+
+interface Insight {
+  id: string;
+  message: string;
+  action: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { sender: 'bot', message: 'Hello! I am Hunter AI assistant. How can I help you today?' },
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [jobFilter, setJobFilter] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Added for loading state
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<{
+    activeJobs: number;
+    totalCandidates: number;
+    timeToHire: string;
+    hiringRate: string;
+    hiringRateLastMonth?: string;
+    recentJobs: Job[];
+    upcomingInterviews: Interview[];
+    notifications: Notification[];
+  }>({
+    activeJobs: 0,
+    totalCandidates: 0,
+    timeToHire: '',
+    hiringRate: '',
+    recentJobs: [],
+    upcomingInterviews: [],
+    notifications: [],
+  });
+  const [jobFilter, setJobFilter] = useState<'All' | 'active' | 'archived'>('All');
+  const [interviewFilter, setInterviewFilter] = useState<'Today' | 'This Week' | 'All'>('Today');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [anchorElInterview, setAnchorElInterview] = useState<null | HTMLElement>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    localStorage.getItem('theme') === 'light' ? 'light' : 'dark'
+  );
+  const [isJobsExpanded, setIsJobsExpanded] = useState(true);
+  const [isInterviewsExpanded, setIsInterviewsExpanded] = useState(true);
 
-  const jobsPerPage = 5;
+  // Hunter AI state
+  const [hunterMessages, setHunterMessages] = useState<HunterMessage[]>([
+    { 
+      sender: 'hunter', 
+      message: 'Hello, Troy! Welcome to your Recruitment Dashboard. How can I help you today?',
+      type: 'success'
+    }
+  ]);
+  const [hunterInput, setHunterInput] = useState('');
+  const [hunterMode, setHunterMode] = useState<'welcome' | 'funFact' | 'trivia' | 'game'>('welcome');
+  const [triviaAnswer, setTriviaAnswer] = useState<string | null>(null);
+  const [gameJob, setGameJob] = useState<Job | null>(null);
+  const hunterMessagesRef = useRef<HTMLDivElement>(null);
+  const [isHunterLoading, setIsHunterLoading] = useState(false);
 
-  const dashboardData = {
-    activeJobs: 12,
-    applicantsPerJob: 45,
-    candidateStages: {
-      applied: 60,
-      interviewed: 28,
-      shortlisted: 15,
-      hired: 8,
-    },
-    recentActivity: [
-      { id: 1, action: 'Posted new job: Frontend Developer', time: '1 day ago', type: 'job', link: '/jobs/1' },
-      { id: 2, action: 'Reviewed 5 candidates for Backend Engineer', time: '2 days ago', type: 'review', link: '/candidates?job=backend-engineer' },
-      { id: 3, action: 'Scheduled interview with John Smith', time: '3 days ago', type: 'interview', link: '/interviews/123' },
-    ],
-    upcomingInterviews: [
-      { id: 1, candidate: 'Mark Cuizon', position: 'Frontend Developer', time: '10:00 AM', date: '2025-04-21' },
-      { id: 2, candidate: 'Arone Titong', position: 'Backend Engineer', time: '2:00 PM', date: '2025-04-21' },
-      { id: 3, candidate: 'Michael Jackson', position: 'Data Scientist', time: '11:00 AM', date: '2025-04-22' },
-    ],
-    performanceMetrics: {
-      timeToHire: '24 days',
-      interviewToOffer: '5 days',
-      offerAcceptance: '85%',
-      candidateSatisfaction: '4.8/5',
-      totalHires: 45,
-      activeInterviews: 12,
-      avgInterviewScore: 8.5,
-      hiringEfficiency: '92%',
-    },
-    recentJobs: [
-      { id: 1, title: 'Frontend Developer', department: 'Engineering', applicants: 25, status: 'Open', posted: '2025-04-15' },
-      { id: 2, title: 'Backend Engineer', department: 'Engineering', applicants: 18, status: 'Open', posted: '2025-04-14' },
-      { id: 3, title: 'Data Scientist', department: 'Analytics', applicants: 12, status: 'Closed', posted: '2025-04-10' },
-      { id: 4, title: 'Product Manager', department: 'Product', applicants: 8, status: 'Open', posted: '2025-04-12' },
-      { id: 5, title: 'UX Designer', department: 'Design', applicants: 15, status: 'Closed', posted: '2025-04-11' },
-      { id: 6, title: 'DevOps Engineer', department: 'Engineering', applicants: 20, status: 'Open', posted: '2025-04-13' },
-    ],
-    notifications: [
-      { id: 1, message: 'New application for Frontend Developer role', time: '1 hour ago', link: '/candidates/123' },
-      { id: 2, message: 'Interview scheduled with Mark Cuizon', time: '3 hours ago', link: '/interviews/456' },
-      { id: 3, message: 'Job posting for Data Scientist closed', time: '5 hours ago', link: '/jobs/3' },
-    ],
-  };
+  // New states for interactive features
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [greeting, setGreeting] = useState('');
+  const [isStatsExpanded, setIsStatsExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const stageChartData = {
     labels: ['Applied', 'Interviewed', 'Shortlisted', 'Hired'],
     datasets: [
       {
-        data: [
-          dashboardData.candidateStages.applied,
-          dashboardData.candidateStages.interviewed,
-          dashboardData.candidateStages.shortlisted,
-          dashboardData.candidateStages.hired,
-        ],
-        backgroundColor: ['#0D6EFD', '#10B981', '#F59E0B', '#22D3EE'],
-        borderColor: ['#1E293B', '#1E293B', '#1E293B', '#1E293B'],
+        data: [60, 28, 15, 8],
+        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#A855F7'],
+        borderColor: theme === 'dark' ? ['#1F2937', '#1F2937', '#1F2937', '#1F2937'] : ['#E5E7EB', '#E5E7EB', '#E5E7EB', '#E5E7EB'],
         borderWidth: 2,
       },
     ],
   };
 
-  const performanceChartData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+  const hiringRateComparisonData = {
+    labels: ['This Month', 'Last Month'],
     datasets: [
       {
-        label: 'Hires',
-        data: [12, 19, 15, 25, 22, 30],
-        backgroundColor: '#22D3EE',
-        borderColor: '#22D3EE',
+        label: 'Hiring Rate (%)',
+        data: [
+          parseFloat(dashboardData.hiringRate) || 0,
+          parseFloat(dashboardData.hiringRateLastMonth || '0') || 0,
+        ],
+        backgroundColor: ['#3B82F6', '#A855F7'],
+        borderColor: ['#2563EB', '#9333EA'],
         borderWidth: 1,
-        tension: 0.4,
       },
     ],
   };
 
-  // Simulate data loading
-  useEffect(() => {
-    setTimeout(() => setIsLoading(false), 1000);
-  }, []);
-
-  // Theme Toggle
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
-
-  // Scroll to bottom of chat
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chatMessages]);
-
-  const handleSort = (key: keyof Job) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-
-    const sortedJobs = [...dashboardData.recentJobs].sort((a, b) => {
-      if (key === 'applicants') {
-        return direction === 'asc' ? a[key] - b[key] : b[key] - a[key];
-      }
-      return direction === 'asc'
-        ? String(a[key]).localeCompare(String(b[key]))
-        : String(b[key]).localeCompare(String(a[key]));
-    });
-    dashboardData.recentJobs = sortedJobs;
+  const trends = {
+    activeJobs: { change: 10, direction: 'up' },
+    totalCandidates: { change: -5, direction: 'down' },
   };
 
-  const filteredJobs = dashboardData.recentJobs.filter(job =>
-    (jobFilter === 'All' || job.status === jobFilter) &&
-    (job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     job.department.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Theme toggle
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    document.body.className = theme;
+  }, [theme]);
 
-  const paginatedJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
-  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  // Generate AI-driven insights
+  const generateInsights = () => {
+    const newInsights: Insight[] = [];
+
+    // Insight: Low applicant turnout
+    const lowApplicantJobs = dashboardData.recentJobs.filter(job => job.applicants < 5);
+    if (lowApplicantJobs.length > 0) {
+      newInsights.push({
+        id: 'low-applicants',
+        message: `You have ${lowApplicantJobs.length} jobs with low applicant turnout. Consider reposting or revising them.`,
+        action: () => navigate('/admin/jobs'),
+      });
+    }
+
+    // Insight: Upcoming interviews
+    if (dashboardData.upcomingInterviews.length > 0) {
+      newInsights.push({
+        id: 'upcoming-interviews',
+        message: `You have ${dashboardData.upcomingInterviews.length} interviews scheduled today. Prepare your questions!`,
+        action: () => navigate('/admin/schedule'),
+      });
+    }
+
+    // Insight: High time to hire
+    if (parseInt(dashboardData.timeToHire) > 30) {
+      newInsights.push({
+        id: 'high-time-to-hire',
+        message: `Your average time to hire is ${dashboardData.timeToHire}. Let's streamline the process.`,
+        action: () => navigate('/admin/reports'),
+      });
+    }
+
+    setInsights(newInsights);
+  };
+
+  const handleHunterAction = debounce((action: string, context?: any) => {
+    let response: ActionResponse = {
+      message: '',
+      type: 'info'
+    };
+
+    switch (action) {
+      case 'page_load':
+        response = {
+          message: `Welcome back, Troy! You have ${dashboardData.activeJobs} active jobs and ${dashboardData.upcomingInterviews.length} upcoming interviews. How can I help you today?`,
+          type: 'success',
+          action: () => setHunterMode('welcome')
+        };
+        break;
+      case 'filter_jobs':
+        response = {
+          message: `I see you're filtering by ${context.filter} jobs. Would you like some tips on managing these positions?`,
+          type: 'info',
+          action: () => setHunterMode('welcome')
+        };
+        break;
+      case 'export_csv':
+        response = {
+          message: 'Your data has been exported successfully! Would you like to analyze the trends?',
+          type: 'success',
+          action: () => setHunterMode('welcome')
+        };
+        break;
+      case 'refresh_data':
+        response = {
+          message: 'Data refreshed! I noticed some interesting patterns. Would you like to hear about them?',
+          type: 'success',
+          action: () => setHunterMode('welcome')
+        };
+        break;
+      case 'navigate_create_job':
+        response = {
+          message: 'Creating a new job? I can help you write an effective job description. Would you like some tips?',
+          type: 'info',
+          action: () => setHunterMode('welcome')
+        };
+        break;
+      case 'navigate_schedule':
+        response = {
+          message: 'Scheduling interviews? I can help you find the best time slots. Would you like to see some suggestions?',
+          type: 'info',
+          action: () => setHunterMode('welcome')
+        };
+        break;
+      case 'export_chart':
+        response = {
+          message: 'Chart exported successfully! Would you like to share it with your team?',
+          type: 'success',
+          action: () => setHunterMode('welcome')
+        };
+        break;
+      default:
+        response = {
+          message: 'I\'m not sure what you\'d like to do. Would you like to try a fun fact or play a game?',
+          type: 'warning',
+          action: () => setHunterMode('welcome')
+        };
+    }
+
+    setHunterMessages(prev => [...prev, { 
+      sender: 'hunter', 
+      message: response.message,
+      type: response.type
+    }]);
+
+    if (response.action) {
+      response.action();
+    }
+  }, 1000);
+
+  // Fetch data from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const activeJobsQuery = query(collection(db, 'createjobs'), where('status', '==', 'active'));
+        const activeJobsSnapshot = await getDocs(activeJobsQuery);
+        const activeJobs = activeJobsSnapshot.docs.length;
+
+        const candidatesSnapshot = await getDocs(collection(db, 'candidates'));
+        const totalCandidates = candidatesSnapshot.docs.length;
+
+        const statsDoc = await getDoc(doc(db, 'stats', 'current'));
+        const statsData = statsDoc.exists() ? statsDoc.data() as Stats : {
+          timeToHire: '0 days',
+          hiringRate: '0%',
+          hiringRateLastMonth: '0%',
+        };
+
+        const allJobsSnapshot = await getDocs(collection(db, 'createjobs'));
+        const recentJobs = allJobsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            title: data.jobTitle || 'Untitled Job',
+            department: data.company || 'Unknown Department',
+            applicants: data.candidates?.length || 0,
+            status: data.status || 'active',
+            posted: data.createdAt?.toDate().toISOString().split('T')[0] || 'Unknown',
+            screeningProgress: Math.floor(Math.random() * 100), // Simulated progress
+          };
+        });
+
+        const interviewsSnapshot = await getDocs(collection(db, 'interviews'));
+        const upcomingInterviews = interviewsSnapshot.docs.map(doc => ({
+          id: doc.data().id,
+          candidate: doc.data().candidate,
+          position: doc.data().position,
+          time: doc.data().time,
+          date: doc.data().date,
+        }));
+
+        const notificationsSnapshot = await getDocs(collection(db, 'notifications'));
+        const notifications = notificationsSnapshot.docs.map(doc => ({
+          id: doc.data().id,
+          message: doc.data().message,
+          time: doc.data().time,
+          link: doc.data().link,
+        }));
+
+        setDashboardData({
+          activeJobs,
+          totalCandidates,
+          ...statsData,
+          recentJobs,
+          upcomingInterviews,
+          notifications,
+        });
+        setToast({ message: 'Data loaded successfully', type: 'success' });
+
+        handleHunterAction('page_load');
+        generateInsights();
+      } catch (error) {
+        console.error('Error fetching Firestore data:', error);
+        setToast({ message: 'Failed to load data', type: 'error' });
+        setHunterMessages(prev => [...prev, {
+          sender: 'hunter',
+          message: 'Troy, I had trouble loading the data. Want me to try again?'
+        }]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Scroll to bottom of Hunter messages
+  useEffect(() => {
+    if (hunterMessagesRef.current) {
+      hunterMessagesRef.current.scrollTop = hunterMessagesRef.current.scrollHeight;
+    }
+  }, [hunterMessages]);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Export chart as PNG
+  const exportChart = async () => {
+    if (chartRef.current) {
+      const canvas = await html2canvas(chartRef.current);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          saveAs(blob, 'candidate-stages.png');
+          setToast({ message: 'Chart exported as PNG', type: 'success' });
+          handleHunterAction('export_chart');
+        }
+      });
+    }
+  };
 
   const exportToCSV = () => {
     const headers = ['ID,Title,Department,Applicants,Status,Posted'];
@@ -204,24 +427,99 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setToast({ message: 'Jobs exported successfully', type: 'success' });
+    handleHunterAction('export_csv');
   };
 
-  const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
+  // Job filter logic
+  const filteredJobs = jobFilter === 'All'
+    ? dashboardData.recentJobs
+    : dashboardData.recentJobs.filter(job => job.status === jobFilter);
 
-    setChatMessages(prev => [...prev, { sender: 'user', message: chatInput }]);
-    const userMessage = chatInput.trim();
-    setChatInput('');
-    setIsChatLoading(true);
+  // Interview filter logic
+  const today = new Date().toISOString().split('T')[0];
+  const filteredInterviews = interviewFilter === 'All'
+    ? dashboardData.upcomingInterviews
+    : interviewFilter === 'Today'
+    ? dashboardData.upcomingInterviews.filter(interview => interview.date === today)
+    : dashboardData.upcomingInterviews.filter(interview => {
+        const interviewDate = new Date(interview.date);
+        const now = new Date();
+        const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+        const weekEnd = new Date(now.setDate(now.getDate() + 6));
+        return interviewDate >= weekStart && interviewDate <= weekEnd;
+      });
 
+  const handleFilterClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleFilterClose = (filter: 'All' | 'active' | 'archived') => {
+    setJobFilter(filter);
+    setAnchorEl(null);
+    handleHunterAction('filter_jobs', { filter });
+  };
+
+  const handleInterviewFilterClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElInterview(event.currentTarget);
+  };
+
+  const handleInterviewFilterClose = (filter: 'Today' | 'This Week' | 'All') => {
+    setInterviewFilter(filter);
+    setAnchorElInterview(null);
+  };
+
+  // Drag-and-drop handler for interviews
+  const onDragEnd = async (result: any) => {
+    if (!result.destination) return;
+
+    const reorderedInterviews = Array.from(dashboardData.upcomingInterviews);
+    const [movedInterview] = reorderedInterviews.splice(result.source.index, 1);
+    reorderedInterviews.splice(result.destination.index, 0, movedInterview);
+
+    setDashboardData(prev => ({
+      ...prev,
+      upcomingInterviews: reorderedInterviews,
+    }));
+
+    // Update Firestore (simulated)
+    try {
+      const interviewRef = doc(db, 'interviews', movedInterview.id.toString());
+      await updateDoc(interviewRef, { order: result.destination.index });
+      setToast({ message: 'Interview rescheduled successfully', type: 'success' });
+    } catch (error) {
+      console.error('Error updating interview order:', error);
+      setToast({ message: 'Failed to reschedule interview', type: 'error' });
+    }
+  };
+
+  // Hunter AI interactions
+  const funFacts = [
+    'Did you know the average job posting receives 250 applications?',
+    'Fun fact: 47% of candidates say the interview process reflects how a company treats its employees!',
+    'Heres a stat: 60% of job seekers have quit an application process because it was too long!',
+  ];
+
+  const triviaQuestions = [
+    {
+      question: 'Whats the most common interview question? A) Tell me about yourself, B) Whats your salary expectation?',
+      answer: 'A) Tell me about yourself',
+    },
+    {
+      question: 'What percentage of resumes are rejected due to typos? A) 30%, B) 77%?',
+      answer: 'B) 77%',
+    },
+  ];
+
+  const handleFunFact = async () => {
+    setIsHunterLoading(true);
     try {
       const response = await axios.post(
         process.env.REACT_APP_GEMINI_API_URL!,
         {
           contents: [{
             parts: [{
-              text: `You are a helpful HR assistant. Please provide a concise response to: ${userMessage}`
+              text: 'Generate a concise, interesting HR-related fun fact.'
             }]
           }]
         },
@@ -232,193 +530,263 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
           }
         }
       );
-
-      const botResponse = response.data.candidates[0].content.parts[0].text;
-      setChatMessages(prev => [...prev, { sender: 'bot', message: botResponse }]);
+      const fact = response.data.candidates[0].content.parts[0].text;
+      setHunterMessages(prev => [...prev, { sender: 'hunter', message: fact, type: 'success' }]);
     } catch (error) {
-      console.error('Error calling Gemini API:', error);
-      setChatMessages(prev => [...prev, { 
-        sender: 'bot', 
-        message: 'Sorry, I encountered an error. Please try again.' 
-      }]);
+      console.error('Error fetching fun fact:', error);
+      const randomFact = funFacts[Math.floor(Math.random() * funFacts.length)];
+      setHunterMessages(prev => [...prev, { sender: 'hunter', message: randomFact, type: 'success' }]);
     } finally {
-      setIsChatLoading(false);
+      setIsHunterLoading(false);
+      setHunterMode('funFact');
     }
   };
 
-  const clearChat = () => {
-    setChatMessages([{ sender: 'bot', message: 'Hello! I am Hunter AI assistant. How can I help you today?' }]);
-    setChatInput('');
+  const handleTrivia = () => {
+    const randomQuestion = triviaQuestions[Math.floor(Math.random() * triviaQuestions.length)];
+    setHunterMessages(prev => [...prev, { sender: 'hunter', message: randomQuestion.question, type: 'info' }]);
+    setTriviaAnswer(randomQuestion.answer);
+    setHunterMode('trivia');
   };
 
-  const particlesInit = useCallback(async (engine: any) => {
-    await loadSlim(engine);
-  }, []);
+  const handleGame = () => {
+    const job = dashboardData.recentJobs[Math.floor(Math.random() * dashboardData.recentJobs.length)];
+    setGameJob(job);
+    setHunterMessages(prev => [...prev, { 
+      sender: 'hunter', 
+      message: `Let's play a game, Troy! Guess the number of applicants for the "${job.title}" position. Enter your guess below!`,
+      type: 'info'
+    }]);
+    setHunterMode('game');
+  };
 
-  const particlesLoaded = useCallback(async (container: any) => {
-    console.log('Particles loaded:', container);
-  }, []);
+  const handleHunterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hunterInput.trim()) return;
+
+    setHunterMessages(prev => [...prev, { sender: 'user', message: hunterInput.trim(), type: 'info' }]);
+    const userInput = hunterInput.trim();
+    setHunterInput('');
+    setIsHunterLoading(true);
+
+    try {
+      if (hunterMode === 'trivia' && triviaAnswer) {
+        const isCorrect = userInput.toLowerCase().includes(triviaAnswer.toLowerCase().split(')')[1].trim());
+        setHunterMessages(prev => [...prev, { 
+          sender: 'hunter', 
+          message: isCorrect ? 'Correct! Great job, Troy! Want to try another one?' : `Nice try, but the answer was ${triviaAnswer}. Want to play again?`,
+          type: 'success'
+        }]);
+        setTriviaAnswer(null);
+        setHunterMode('welcome');
+      } else if (hunterMode === 'game' && gameJob) {
+        const guess = parseInt(userInput, 10);
+        if (isNaN(guess)) {
+          setHunterMessages(prev => [...prev, { sender: 'hunter', message: 'Please enter a number, Troy!', type: 'warning' }]);
+        } else {
+          const actual = gameJob.applicants;
+          const message = guess === actual
+            ? `Spot on, Troy! "${gameJob.title}" has exactly ${actual} applicants! Want to play again?`
+            : guess < actual
+            ? `Good guess, but "${gameJob.title}" has ${actual} applicants—higher than your guess! Try again?`
+            : `Nice try, but "${gameJob.title}" has ${actual} applicants—lower than your guess! Another round?`;
+          setHunterMessages(prev => [...prev, { sender: 'hunter', message, type: 'success' }]);
+          setGameJob(null);
+          setHunterMode('welcome');
+        }
+      } else {
+        const context = {
+          activeJobs: dashboardData.activeJobs,
+          totalCandidates: dashboardData.totalCandidates,
+          upcomingInterviews: dashboardData.upcomingInterviews.length,
+          jobFilter,
+          userName: 'Troy',
+          insights: insights.map(i => i.message),
+        };
+        const response = await axios.post(
+          process.env.REACT_APP_GEMINI_API_URL!,
+          {
+            contents: [{
+              parts: [{
+                text: `You are Hunter AI, a helpful and entertaining HR assistant on a recruitment dashboard. The current admin is Troy. Dashboard context: ${JSON.stringify(context)}. Respond to: "${userInput}" in a friendly, concise, and context-aware manner, offering relevant suggestions or entertainment options (e.g., fun facts, trivia, games).`
+              }]
+            }]
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': process.env.REACT_APP_GEMINI_API_KEY
+            }
+          }
+        );
+        const botResponse = response.data.candidates[0].content.parts[0].text;
+        setHunterMessages(prev => [...prev, { sender: 'hunter', message: botResponse, type: 'success' }]);
+      }
+    } catch (error) {
+      console.error('Error calling Gemini API:', error);
+      setHunterMessages(prev => [...prev, { 
+        sender: 'hunter', 
+        message: 'Sorry, Troy, I hit a snag. Lets try something else—want to hear a fun fact?',
+        type: 'warning'
+      }]);
+      setHunterMode('welcome');
+    } finally {
+      setIsHunterLoading(false);
+    }
+  };
+
+  const chatFeatures: ChatFeature[] = [
+    {
+      id: 'fun-fact',
+      icon: <LightBulbIcon className="w-5 h-5" />,
+      label: 'Fun Fact',
+      action: handleFunFact
+    },
+    {
+      id: 'trivia',
+      icon: <QuestionMarkCircleIcon className="w-5 h-5" />,
+      label: 'Trivia',
+      action: handleTrivia
+    },
+    {
+      id: 'game',
+      icon: <PlayIcon className="w-5 h-5" />,
+      label: 'Play Game',
+      action: handleGame
+    },
+    {
+      id: 'schedule',
+      icon: <CalendarIcon className="w-5 h-5" />,
+      label: 'Schedule Help',
+      action: () => handleHunterAction('navigate_schedule')
+    },
+    {
+      id: 'job-tips',
+      icon: <BriefcaseIcon className="w-5 h-5" />,
+      label: 'Job Tips',
+      action: () => handleHunterAction('navigate_create_job')
+    }
+  ];
 
   const containerVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeInOut' } },
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, staggerChildren: 0.1 } },
   };
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, delay: i * 0.2, ease: 'easeInOut' },
-    }),
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 0 15px rgba(34, 211, 238, 0.4)' },
+    hover: { scale: 1.05, rotate: 2 },
     tap: { scale: 0.95 },
   };
 
-  const chatBubbleVariants = {
+  const messageVariants = {
     hidden: { opacity: 0, x: -20 },
     visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
   };
 
-  const iconVariants = {
-    hover: { scale: 1.1, rotate: 10, transition: { duration: 0.2 } },
-    tap: { scale: 0.9 },
-    float: {
-      y: [-2, 2, -2],
-      transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
-    },
-  };
+  // Update greeting based on time of day
+  useEffect(() => {
+    const hour = currentTime.getHours();
+    if (hour < 12) {
+      setGreeting('Good morning');
+    } else if (hour < 18) {
+      setGreeting('Good afternoon');
+    } else {
+      setGreeting('Good evening');
+    }
+  }, [currentTime]);
+
+  // Update time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#0F172A] flex flex-col relative overflow-hidden">
-      {/* Particle Background */}
-      <Particles
-        id="tsparticles"
-        options={{
-          background: {
-            color: {
-              value: "transparent",
-            },
-          },
-          fpsLimit: 60,
-          interactivity: {
-            events: {
-              onHover: {
-                enable: true,
-                mode: "repulse",
-              },
-            },
-            modes: {
-              repulse: {
-                distance: 100,
-                duration: 0.4,
-              },
-            },
-          },
-          particles: {
-            color: {
-              value: "#22D3EE",
-            },
-            links: {
-              color: "#22D3EE",
-              distance: 150,
-              enable: true,
-              opacity: 0.3,
-              width: 1,
-            },
-            move: {
-              direction: "none",
-              enable: true,
-              outModes: {
-                default: "bounce",
-              },
-              random: false,
-              speed: 1,
-              straight: false,
-            },
-            number: {
-              density: {
-                enable: true,
-              },
-              value: 80,
-            },
-            opacity: {
-              value: 0.5,
-            },
-            shape: {
-              type: "circle",
-            },
-            size: {
-              value: { min: 1, max: 3 },
-            },
-          },
-          detectRetina: true,
-        }}
-        className="absolute inset-0 z-0"
-      />
-
-      {/* Background Gradient with Hexagonal Pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A] to-[#1E293B] pointer-events-none z-10" />
-      <div className="absolute inset-0 hexagon-overlay pointer-events-none opacity-20 z-10" />
-
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} flex flex-col`}>
       {/* Mobile Menu Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[#22D3EE] rounded-lg"
+        className="lg:hidden fixed top-20 left-4 z-50 p-2 bg-blue-600 rounded-full shadow-lg"
+        aria-label="Open mobile menu"
       >
-        <Bars3Icon className="h-6 w-6 text-[#0F172A]" />
+        <Bars3Icon className="h-6 w-6 text-white" />
       </motion.button>
 
       {/* Mobile Menu */}
       <div
-        className={`lg:hidden fixed inset-0 bg-[#1E293B]/90 backdrop-blur-lg z-40 transform transition-transform duration-300 ${
+        className={`lg:hidden fixed inset-0 ${theme === 'dark' ? 'bg-gray-900/95' : 'bg-gray-100/95'} z-40 transform transition-transform duration-300 ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-6 pt-20">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsMobileMenuOpen(false)}
-            className="absolute top-4 right-4 p-2"
+            className="absolute top-20 right-4 p-2"
+            aria-label="Close mobile menu"
           >
-            <XMarkIcon className="h-6 w-6 text-[#F8FAFC]" />
+            <XMarkIcon className={`h-6 w-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
           </motion.button>
-          <div className="space-y-3">
-            {['overview', 'analytics', 'activity'].map((tab) => (
-              <motion.button
-                key={tab}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setActiveTab(tab);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full p-3 text-left rounded-lg flex items-center space-x-2 text-sm font-medium font-inter ${
-                  activeTab === tab
-                    ? 'bg-[#22D3EE] text-[#0F172A]'
-                    : 'text-[#F8FAFC] hover:bg-[#22D3EE]/10'
-                }`}
-              >
-                {tab === 'overview' && <ChartBarIcon className="h-5 w-5" />}
-                {tab === 'analytics' && <ArrowTrendingUpIcon className="h-5 w-5" />}
-                {tab === 'activity' && <ClockIcon className="h-5 w-5" />}
-                <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
-              </motion.button>
-            ))}
+          <div className="space-y-4">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="w-full p-3 text-left rounded-lg flex items-center space-x-2 text-sm font-medium text-[#F8FAFC] hover:bg-[#22D3EE]/10 font-inter"
+              onClick={() => {
+                navigate('/admin/create-job');
+                setIsMobileMenuOpen(false);
+                handleHunterAction('navigate_create_job');
+              }}
+              className={`w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium ${theme === 'dark' ? 'text-white bg-blue-600/20 hover:bg-blue-600/30' : 'text-gray-900 bg-blue-200/50 hover:bg-blue-200/70'}`}
             >
-              {isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-              <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+              <PlusIcon className="h-5 w-5 text-blue-400" />
+              <span>Post New Job</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                navigate('/admin/schedule');
+                setIsMobileMenuOpen(false);
+                handleHunterAction('navigate_schedule');
+              }}
+              className={`w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium ${theme === 'dark' ? 'text-white bg-blue-600/20 hover:bg-blue-600/30' : 'text-gray-900 bg-blue-200/50 hover:bg-blue-200/70'}`}
+            >
+              <CalendarIcon className="h-5 w-5 text-blue-400" />
+              <span>Schedule Interview</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                navigate('/admin/jobs');
+                setIsMobileMenuOpen(false);
+              }}
+              className={`w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium ${theme === 'dark' ? 'text-white bg-blue-600/20 hover:bg-blue-600/30' : 'text-gray-900 bg-blue-200/50 hover:bg-blue-200/70'}`}
+            >
+              <BriefcaseIcon className="h-5 w-5 text-blue-400" />
+              <span>View Jobs</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                navigate('/admin/candidates');
+                setIsMobileMenuOpen(false);
+              }}
+              className={`w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium ${theme === 'dark' ? 'text-white bg-blue-600/20 hover:bg-blue-600/30' : 'text-gray-900 bg-blue-200/50 hover:bg-blue-200/70'}`}
+            >
+              <UserGroupIcon className="h-5 w-5 text-blue-400" />
+              <span>View Candidates</span>
             </motion.button>
           </div>
         </div>
@@ -429,837 +797,654 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
         brandName={brandName}
         userName="Troy Teeples"
         userAvatar="https://randomuser.me/api/portraits/men/1.jpg"
-        onSearch={setSearchQuery}
+        onSearch={() => {}}
         initialNotifications={dashboardData.notifications}
+        theme={theme}
       />
 
-      {/* Main Content */}
-      <div className="flex flex-col lg:flex-row min-h-screen pt-16">
-        {/* Collapsible Sidebar */}
-        <div 
-          className={`hidden lg:block transition-all duration-300 fixed left-0 top-16 bottom-0 ${
-            isSidebarCollapsed ? 'w-16' : 'w-64'
-          } bg-[#1E293B]/90 backdrop-blur-lg border-r border-[#22D3EE]/30 z-30`}
+      {/* Toast Notification */}
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+            toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+          } text-white text-sm`}
         >
-          <div className="p-4 space-y-6">
-            <div className="flex items-center justify-between">
-              {!isSidebarCollapsed && (
-                <div className="flex items-center space-x-3">
-                  <img src="/logo.png" alt="Logo" className="h-8 w-8" />
-                  <h1 className="text-xl font-bold text-[#F8FAFC] font-inter">{brandName}</h1>
-                </div>
-              )}
+          {toast.message}
+        </motion.div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto" style={{ paddingTop: '80px' }}>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="max-w-7xl mx-auto space-y-8 overflow-hidden"
+        >
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className={`text-4xl font-bold tracking-tight bg-clip-text text-transparent ${theme === 'dark' ? 'bg-gradient-to-r from-blue-400 to-indigo-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
+                <TypeAnimation
+                  sequence={[
+                    'Welcome back, Troy!',
+                    1000,
+                    'Ready to find the best talent?',
+                    1000,
+                    'Let\'s make some great hires!',
+                    1000,
+                    'Your recruitment journey starts here.',
+                    1000,
+                  ]}
+                  wrapper="span"
+                  speed={50}
+                  repeat={Infinity}
+                />
+              </h1>
+              <p className={`mt-2 text-sm font-light ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                Recruitment Dashboard • April 23, 2025
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="contained"
+                startIcon={<PlusIcon className="h-5 w-5" />}
+                onClick={() => {
+                  navigate('/admin/create-job');
+                  handleHunterAction('navigate_create_job');
+                }}
+                sx={{
+                  bgcolor: 'linear-gradient(to right, #3B82F6, #7C3AED)',
+                  background: 'linear-gradient(to right, #3B82F6, #7C3AED)',
+                  color: 'white',
+                  px: 4,
+                  py: 1.5,
+                  borderRadius: 3,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { background: 'linear-gradient(to right, #2563EB, #6D28D9)' },
+                }}
+                aria-label="Post new job"
+              >
+                New Job
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<CalendarIcon className="h-5 w-5" />}
+                onClick={() => {
+                  navigate('/admin/schedule');
+                  handleHunterAction('navigate_schedule');
+                }}
+                sx={{
+                  borderColor: '#3B82F6',
+                  color: '#3B82F6',
+                  px: 4,
+                  py: 1.5,
+                  borderRadius: 3,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { bgcolor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)' },
+                }}
+                aria-label="Schedule interview"
+              >
+                Schedule
+              </Button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className="p-2 hover:bg-[#22D3EE]/10 rounded-lg transition-colors"
+                onClick={() => {
+                  setIsLoading(true);
+                  setDashboardData({
+                    activeJobs: 0,
+                    totalCandidates: 0,
+                    timeToHire: '',
+                    hiringRate: '',
+                    recentJobs: [],
+                    upcomingInterviews: [],
+                    notifications: [],
+                  });
+                  handleHunterAction('refresh_data');
+                  setTimeout(() => setIsLoading(false), 1000);
+                }}
+                className={`p-2 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-lg`}
+                aria-label="Refresh data"
               >
-                <ChevronLeftIcon className={`h-5 w-5 text-[#F8FAFC] transition-transform ${
-                  isSidebarCollapsed ? 'rotate-180' : ''
-                }`} />
+                <ArrowPathRoundedSquareIcon className="h-5 w-5 text-blue-400" />
               </motion.button>
-            </div>
-            <div className="space-y-2">
-              {['overview', 'analytics', 'activity'].map((tab) => (
-                <motion.button
-                  key={tab}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setActiveTab(tab)}
-                  className={`w-full p-3 text-left rounded-lg flex items-center ${
-                    isSidebarCollapsed ? 'justify-center' : 'space-x-2'
-                  } text-sm font-medium font-inter ${
-                    activeTab === tab
-                      ? 'bg-[#22D3EE] text-[#0F172A]'
-                      : 'text-[#F8FAFC] hover:bg-[#22D3EE]/10'
-                  } ${isSidebarCollapsed ? 'tooltip' : ''}`}
-                  data-tooltip={isSidebarCollapsed ? tab.charAt(0).toUpperCase() + tab.slice(1) : undefined}
-                >
-                  {tab === 'overview' && <ChartBarIcon className="h-5 w-5" />}
-                  {tab === 'analytics' && <ArrowTrendingUpIcon className="h-5 w-5" />}
-                  {tab === 'activity' && <ClockIcon className="h-5 w-5" />}
-                  {!isSidebarCollapsed && (
-                    <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
-                  )}
-                </motion.button>
-              ))}
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`w-full p-3 text-left rounded-lg flex items-center ${
-                  isSidebarCollapsed ? 'justify-center' : 'space-x-2'
-                } text-sm font-medium text-[#F8FAFC] hover:bg-[#22D3EE]/10 font-inter ${isSidebarCollapsed ? 'tooltip' : ''}`}
-                data-tooltip={isSidebarCollapsed ? (isDarkMode ? 'Light Mode' : 'Dark Mode') : undefined}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleTheme}
+                className={`p-2 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-lg`}
+                aria-label="Toggle theme"
               >
-                {isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-                {!isSidebarCollapsed && (
-                  <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                {theme === 'dark' ? (
+                  <SunIcon className="h-5 w-5 text-yellow-400" />
+                ) : (
+                  <MoonIcon className="h-5 w-5 text-gray-600" />
                 )}
               </motion.button>
             </div>
           </div>
-        </div>
 
-        {/* Content Area */}
-        <div 
-          className={`flex-1 p-4 lg:p-8 transition-all duration-300 ${
-            isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-          } overflow-y-auto`}
-          style={{ height: 'calc(100vh - 64px)' }}
-        >
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="max-w-7xl mx-auto space-y-8"
-          >
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-              <div>
-                <motion.h1 
-                  className="text-4xl sm:text-5xl font-extrabold text-[#F8FAFC] font-inter"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  Welcome Back, Troy
-                </motion.h1>
-                <motion.p 
-                  className="text-[#BAE6FD] mt-2 text-base font-inter"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  Here's what's happening with your recruitment pipeline today.
-                </motion.p>
-              </div>
-              <motion.div
-                className="flex gap-3"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <Button
-                  variant="contained"
-                  startIcon={<PlusIcon className="h-5 w-5" />}
-                  onClick={() => navigate('/admin/create-job')}
-                  className="bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] text-[#0F172A] px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl font-inter font-semibold"
-                >
-                  Post New Job
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<CalendarIcon className="h-5 w-5" />}
-                  onClick={() => navigate('/admin/schedule')}
-                  className="border border-[#22D3EE]/30 text-[#F8FAFC] hover:bg-[#22D3EE]/10 px-4 py-2 rounded-lg transition-all duration-300 font-inter font-semibold"
-                >
-                  Schedule Interview
-                </Button>
-              </motion.div>
+          {/* Interactive Tabs */}
+          <div className="mb-8">
+            <div className="border-b border-gray-200 dark:border-gray-700">
+              <nav className="-mb-px flex space-x-8">
+                {['overview', 'analytics', 'candidates', 'interviews'].map((tab) => (
+                  <motion.button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`${
+                      activeTab === tab
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors`}
+                  >
+                    {tab}
+                  </motion.button>
+                ))}
+              </nav>
             </div>
+          </div>
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                {
-                  title: 'Active Jobs',
-                  value: dashboardData.activeJobs,
-                  change: '+15%',
-                  trend: 'up',
-                  icon: BriefcaseIcon,
-                  color: 'blue',
-                },
-                {
-                  title: 'Total Candidates',
-                  value: dashboardData.candidateStages.applied,
-                  change: '+32%',
-                  trend: 'up',
-                  icon: UserGroupIcon,
-                  color: 'purple',
-                },
-                {
-                  title: 'Time to Hire',
-                  value: '24 days',
-                  change: '-3 days',
-                  trend: 'down',
-                  icon: ClockIcon,
-                  color: 'green',
-                },
-                {
-                  title: 'Hiring Rate',
-                  value: '92%',
-                  change: '+5%',
-                  trend: 'up',
-                  icon: ChartBarIcon,
-                  color: 'orange',
-                },
-              ].map((stat, index) => (
-                <motion.div
-                  key={stat.title}
-                  variants={cardVariants}
-                  custom={index}
-                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                  className="relative glowing-border"
-                >
-                  <div className="relative bg-[#1E293B]/90 rounded-xl p-6 border border-[#22D3EE]/30 shadow-lg">
-                    <div className="flex justify-between items-start mb-4">
-                      <motion.div
-                        className={`p-2 rounded-lg bg-${stat.color}-500/20`}
-                        variants={iconVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        animate="float"
-                      >
-                        <stat.icon className={`h-6 w-6 text-${stat.color}-400`} />
-                      </motion.div>
-                      <div className={`flex items-center gap-1 text-sm font-inter ${
-                        stat.trend === 'up' ? 'text-[#10B981]' : 'text-[#F87171]'
-                      }`}>
-                        {stat.trend === 'up' ? (
-                          <ArrowTrendingUpIcon className="h-4 w-4" />
-                        ) : (
-                          <ArrowTrendingDownIcon className="h-4 w-4" />
-                        )}
-                        <span>{stat.change}</span>
-                      </div>
-                    </div>
-                    <h3 className="text-[#BAE6FD] text-sm font-medium mb-1 font-inter">{stat.title}</h3>
-                    <p className="text-2xl font-bold text-[#F8FAFC] font-inter">{stat.value}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Tabs */}
-            <div className="flex space-x-4 border-b border-[#22D3EE]/30 mb-8">
-              {['overview', 'analytics', 'activity'].map((tab) => (
-                <motion.button
-                  key={tab}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setActiveTab(tab)}
-                  className={`relative pb-3 px-2 text-sm font-semibold capitalize transition-colors font-inter ${
-                    activeTab === tab
-                      ? 'text-[#22D3EE]'
-                      : 'text-[#BAE6FD] hover:text-[#F8FAFC]'
-                  }`}
-                >
-                  {tab}
-                  {activeTab === tab && (
-                    <motion.div
-                      layoutId="tab-underline"
-                      className="absolute bottom-0 left-0 right-0 h-1 bg-[#22D3EE] rounded-t-md"
-                    />
-                  )}
-                </motion.button>
-              ))}
-            </div>
-
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <>
-                {/* Quick Actions */}
-                <motion.div
-                  variants={cardVariants}
-                  className="bg-[#1E293B]/90 rounded-xl p-6 shadow-md mb-10 border border-[#22D3EE]/30 glowing-border"
-                >
-                  <h3 className="text-lg font-semibold text-[#F8FAFC] mb-4 font-inter">Quick Actions</h3>
-                  <div className="flex flex-wrap gap-3">
-                    {[
-                      { label: 'Post New Job', icon: PlusIcon, path: '/admin/create-job' },
-                      { label: 'Schedule Interview', icon: CalendarIcon, path: '/interviews/schedule' },
-                      { label: 'View Reports', icon: ChartBarIcon, path: '/admin/reports' },
-                    ].map((action) => (
-                      <motion.button
-                        key={action.label}
-                        whileHover="hover"
-                        whileTap="tap"
-                        variants={buttonVariants}
-                        onClick={() => navigate(action.path)}
-                        className="flex items-center px-4 py-2 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] text-[#0F172A] rounded-lg transition-all duration-300 shadow-md font-inter font-semibold"
-                      >
-                        <action.icon className="h-5 w-5 mr-2" />
-                        {action.label}
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-
-                {/* Main Content Area */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Left Column */}
-                  <div className="lg:col-span-2 space-y-6">
-                    {/* Candidate Stages Chart */}
-                    <motion.div
-                      variants={cardVariants}
-                      className="bg-[#1E293B]/90 rounded-xl p-6 shadow-md border border-[#22D3EE]/30 glowing-border"
-                    >
-                      <h3 className="text-lg font-semibold text-[#F8FAFC] mb-4 font-inter">Candidate Stages</h3>
-                      {isLoading ? (
-                        <div className="h-72 flex items-center justify-center">
-                          <svg className="animate-spin h-8 w-8 text-[#22D3EE]" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                          </svg>
-                        </div>
-                      ) : (
-                        <div className="h-72">
-                          <Doughnut
-                            data={stageChartData}
-                            options={{
-                              responsive: true,
-                              maintainAspectRatio: false,
-                              plugins: {
-                                legend: {
-                                  position: 'bottom',
-                                  labels: {
-                                    color: '#BAE6FD',
-                                    font: { family: 'Inter', size: 12 },
-                                    padding: 20,
-                                  },
-                                },
-                                tooltip: {
-                                  backgroundColor: '#1E293B',
-                                  titleColor: '#F8FAFC',
-                                  bodyColor: '#F8FAFC',
-                                  borderColor: '#22D3EE',
-                                  borderWidth: 1,
-                                  cornerRadius: 8,
-                                },
-                              },
-                              animation: {
-                                duration: 1200,
-                                easing: 'easeInOutQuart',
-                              },
-                            }}
-                          />
-                        </div>
-                      )}
-                    </motion.div>
-
-                    {/* Recent Jobs Table */}
-                    <motion.div
-                      variants={cardVariants}
-                      className="bg-[#1E293B]/90 rounded-xl p-6 shadow-md border border-[#22D3EE]/30 glowing-border"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                        <h3 className="text-lg font-semibold text-[#F8FAFC] font-inter">Recent Jobs</h3>
-                        <div className="flex space-x-2">
-                          <select
-                            value={jobFilter}
-                            onChange={(e) => setJobFilter(e.target.value)}
-                            className="p-2 rounded-lg bg-transparent text-[#F8FAFC] border border-[#22D3EE]/30 focus:outline-none focus:ring-2 focus:ring-[#22D3EE] text-sm font-inter"
-                          >
-                            <option value="All">All</option>
-                            <option value="Open">Open</option>
-                            <option value="Closed">Closed</option>
-                          </select>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={exportToCSV}
-                            className="p-2 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] text-[#0F172A] rounded-lg flex items-center space-x-1 text-sm font-inter font-semibold tooltip"
-                            data-tooltip="Export to CSV"
-                          >
-                            <ArrowDownTrayIcon className="h-4 w-4" />
-                            <span>Export</span>
-                          </motion.button>
-                        </div>
-                      </div>
-                      {isLoading ? (
-                        <div className="h-64 flex items-center justify-center">
-                          <svg className="animate-spin h-8 w-8 text-[#22D3EE]" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                          </svg>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-[#F8FAFC] font-inter">
-                              <thead>
-                                <tr className="border-b border-[#22D3EE]/30">
-                                  <th className="py-3 px-4 text-sm font-medium">
-                                    <button onClick={() => handleSort('title')} className="flex items-center">
-                                      Title
-                                      {sortConfig?.key === 'title' && (
-                                        sortConfig.direction === 'asc' ? (
-                                          <ArrowUpIcon className="h-4 w-4 ml-1" />
-                                        ) : (
-                                          <ArrowDownIcon className="h-4 w-4 ml-1" />
-                                        )
-                                      )}
-                                    </button>
-                                  </th>
-                                  <th className="py-3 px-4 text-sm font-medium">
-                                    <button onClick={() => handleSort('department')} className="flex items-center">
-                                      Department
-                                      {sortConfig?.key === 'department' && (
-                                        sortConfig.direction === 'asc' ? (
-                                          <ArrowUpIcon className="h-4 w-4 ml-1" />
-                                        ) : (
-                                          <ArrowDownIcon className="h-4 w-4 ml-1" />
-                                        )
-                                      )}
-                                    </button>
-                                  </th>
-                                  <th className="py-3 px-4 text-sm font-medium">
-                                    <button onClick={() => handleSort('applicants')} className="flex items-center">
-                                      Applicants
-                                      {sortConfig?.key === 'applicants' && (
-                                        sortConfig.direction === 'asc' ? (
-                                          <ArrowUpIcon className="h-4 w-4 ml-1" />
-                                        ) : (
-                                          <ArrowDownIcon className="h-4 w-4 ml-1" />
-                                        )
-                                      )}
-                                    </button>
-                                  </th>
-                                  <th className="py-3 px-4 text-sm font-medium">Status</th>
-                                  <th className="py-3 px-4 text-sm font-medium">Posted</th>
-                                  <th className="py-3 px-4 text-sm font-medium">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {paginatedJobs.map((job) => (
-                                  <motion.tr
-                                    key={job.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="border-b border-[#22D3EE]/30 hover:bg-[#22D3EE]/10 transition-colors"
-                                  >
-                                    <td className="py-4 px-4 text-sm">{job.title}</td>
-                                    <td className="py-4 px-4 text-sm">{job.department}</td>
-                                    <td className="py-4 px-4 text-sm">{job.applicants}</td>
-                                    <td className="py-4 px-4 text-sm">
-                                      <span
-                                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                                          job.status === 'Open'
-                                            ? 'bg-[#10B981]/20 text-[#10B981]'
-                                            : 'bg-[#F87171]/20 text-[#F87171]'
-                                        }`}
-                                      >
-                                        {job.status}
-                                      </span>
-                                    </td>
-                                    <td className="py-4 px-4 text-sm">{job.posted}</td>
-                                    <td className="py-4 px-4 text-sm">
-                                      <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        onClick={() => navigate(`/jobs/${job.id}`)}
-                                        className="text-[#22D3EE] hover:text-[#38BDF8] text-sm font-inter"
-                                      >
-                                        View
-                                      </motion.button>
-                                    </td>
-                                  </motion.tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          {/* Pagination */}
-                          <div className="flex justify-between items-center mt-4">
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                              disabled={currentPage === 1}
-                              className="p-2 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] text-[#0F172A] rounded-lg disabled:opacity-70 disabled:cursor-not-allowed font-inter font-semibold"
-                            >
-                              Previous
-                            </motion.button>
-                            <span className="text-sm text-[#BAE6FD] font-inter">
-                              Page {currentPage} of {totalPages}
-                            </span>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                              disabled={currentPage === totalPages}
-                              className="p-2 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] text-[#0F172A] rounded-lg disabled:opacity-70 disabled:cursor-not-allowed font-inter font-semibold"
-                            >
-                              Next
-                            </motion.button>
-                          </div>
-                        </>
-                      )}
-                    </motion.div>
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-6">
-                    {/* Upcoming Interviews */}
-                    <motion.div
-                      variants={cardVariants}
-                      className="bg-[#1E293B]/90 rounded-xl p-6 shadow-md border border-[#22D3EE]/30 glowing-border"
-                    >
-                      <h3 className="text-lg font-semibold text-[#F8FAFC] mb-4 font-inter">Upcoming Interviews</h3>
-                      <div className="space-y-4">
-                        {dashboardData.upcomingInterviews.map((interview) => (
-                          <motion.div
-                            key={interview.id}
-                            whileHover={{ scale: 1.02 }}
-                            className="flex items-center justify-between p-4 bg-[#22D3EE]/10 rounded-lg hover:bg-[#22D3EE]/20 transition-all cursor-pointer"
-                            onClick={() => navigate(`/interviews/${interview.id}`)}
-                          >
-                            <div>
-                              <p className="font-medium text-[#F8FAFC] font-inter">{interview.candidate}</p>
-                              <p className="text-sm text-[#BAE6FD] font-inter">{interview.position}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-[#F8FAFC] font-inter">{interview.time}</p>
-                              <p className="text-xs text-[#BAE6FD] font-inter">{interview.date}</p>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-
-                    {/* Recent Activity */}
-                    <motion.div
-                      variants={cardVariants}
-                      className="bg-[#1E293B]/90 rounded-xl p-6 shadow-md border border-[#22D3EE]/30 glowing-border"
-                    >
-                      <h3 className="text-lg font-semibold text-[#F8FAFC] mb-4 font-inter">Recent Activity</h3>
-                      <div className="space-y-4">
-                        {dashboardData.recentActivity.map((activity) => (
-                          <motion.div key={activity.id} className="flex items-start space-x-3">
-                            <motion.div
-                              className={`p-2 rounded-lg ${
-                                activity.type === 'job'
-                                  ? 'bg-blue-500/20'
-                                  : activity.type === 'review'
-                                  ? 'bg-green-500/20'
-                                  : 'bg-yellow-500/20'
-                              }`}
-                              variants={iconVariants}
-                              whileHover="hover"
-                              whileTap="tap"
-                              animate="float"
-                            >
-                              {activity.type === 'job' ? (
-                                <BriefcaseIcon className="h-5 w-5 text-blue-400" />
-                              ) : activity.type === 'review' ? (
-                                <UserIcon className="h-5 w-5 text-[#10B981]" />
-                              ) : (
-                                <CalendarIcon className="h-5 w-5 text-[#F59E0B]" />
-                              )}
-                            </motion.div>
-                            <div>
-                              <button
-                                onClick={() => navigate(activity.link)}
-                                className="text-sm text-[#F8FAFC] hover:text-[#22D3EE] transition-colors font-inter"
-                              >
-                                {activity.action}
-                              </button>
-                              <p className="text-xs text-[#BAE6FD] font-inter">{activity.time}</p>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Analytics Tab */}
-            {activeTab === 'analytics' && (
+          {/* Stats Grid with Expandable View */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
               <motion.div
                 variants={cardVariants}
-                className="bg-[#1E293B]/90 rounded-xl p-6 shadow-md border border-[#22D3EE]/30 glowing-border"
+                className={`p-6 rounded-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border border-blue-500/20' 
+                    : 'bg-white border border-gray-200'
+                } shadow-lg`}
               >
-                <h3 className="text-lg font-semibold text-[#F8FAFC] mb-4 font-inter">Hiring Performance</h3>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Key Metrics</h2>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsStatsExpanded(!isStatsExpanded)}
+                    className={`p-2 rounded-lg ${
+                      theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+                    }`}
+                  >
+                    {isStatsExpanded ? (
+                      <ArrowUpIcon className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <ArrowDownIcon className="h-5 w-5 text-gray-500" />
+                    )}
+                  </motion.button>
+                </div>
+                <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-300 ${
+                  isStatsExpanded ? 'h-auto' : 'h-32 overflow-hidden'
+                }`}>
+                  {[
+                    { 
+                      title: 'Active Jobs', 
+                      value: dashboardData.activeJobs, 
+                      icon: BriefcaseIcon, 
+                      trend: trends.activeJobs,
+                      tooltip: 'Number of currently active job postings'
+                    },
+                    { 
+                      title: 'Total Candidates', 
+                      value: dashboardData.totalCandidates, 
+                      icon: UserGroupIcon, 
+                      trend: trends.totalCandidates,
+                      tooltip: 'Total candidates across all jobs'
+                    },
+                    { 
+                      title: 'Time to Hire', 
+                      value: dashboardData.timeToHire, 
+                      icon: ClockIcon,
+                      tooltip: 'Average days to hire a candidate'
+                    },
+                    { 
+                      title: 'Hiring Rate', 
+                      value: dashboardData.hiringRate, 
+                      icon: BriefcaseIcon,
+                      tooltip: 'Percentage of applicants hired'
+                    },
+                  ].map((stat) => (
+                    <MuiTooltip title={stat.tooltip} arrow>
+                      <motion.div
+                        key={stat.title}
+                        variants={cardVariants}
+                        className={`p-6 ${theme === 'dark' ? 'bg-gray-800/80 border-gray-700/50' : 'bg-gray-100/80 border-gray-200/50'} backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all border cursor-pointer`}
+                      >
+                        <div className="flex items-center space-x-4">
+                          <stat.icon className="h-8 w-8 text-blue-400" />
+                          <div>
+                            <p className={`text-sm font-light ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{stat.title}</p>
+                            <p className={`text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{stat.value}</p>
+                            {stat.trend && (
+                              <p className={`text-xs flex items-center gap-1 ${
+                                stat.trend.direction === 'up' ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {stat.trend.direction === 'up' ? (
+                                  <ArrowUpIcon className="h-3 w-3" />
+                                ) : (
+                                  <ArrowDownIcon className="h-3 w-3" />
+                                )}
+                                {stat.trend.change}% vs last week
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    </MuiTooltip>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Candidate Stages Chart */}
+              <motion.div
+                variants={cardVariants}
+                className={`p-6 rounded-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border border-blue-500/20' 
+                    : 'bg-white border border-gray-200'
+                } shadow-lg`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Candidate Stages</h3>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={exportChart}
+                    className="flex items-center space-x-1 text-sm text-blue-400 hover:text-blue-300"
+                    aria-label="Export chart"
+                  >
+                    <DocumentArrowDownIcon className="h-4 w-4" />
+                    <span>Export</span>
+                  </motion.button>
+                </div>
                 {isLoading ? (
-                  <div className="h-96 flex items-center justify-center">
-                    <svg className="animate-spin h-8 w-8 text-[#22D3EE]" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                    </svg>
+                  <div className="h-64 flex items-center justify-center">
+                    <div className="animate-pulse space-y-4 w-full">
+                      <div className={`h-40 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-lg`}></div>
+                      <div className={`h-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded w-1/2 mx-auto`}></div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="h-96">
-                    <Bar
-                      data={performanceChartData}
+                  <div ref={chartRef} className="h-64">
+                    <Doughnut
+                      data={stageChartData}
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: {
-                          y: {
-                            beginAtZero: true,
-                            grid: { color: '#374151' },
-                            ticks: { color: '#BAE6FD', font: { family: 'Inter' } },
-                          },
-                          x: {
-                            grid: { color: '#374151' },
-                            ticks: { color: '#BAE6FD', font: { family: 'Inter' } },
-                          },
-                        },
                         plugins: {
-                          legend: { labels: { color: '#BAE6FD', font: { family: 'Inter' } } },
+                          legend: {
+                            position: 'bottom',
+                            labels: {
+                              color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                              font: { family: 'Inter', size: 12 },
+                              padding: 20,
+                            },
+                          },
                           tooltip: {
-                            backgroundColor: '#1E293B',
-                            titleColor: '#F8FAFC',
-                            bodyColor: '#F8FAFC',
-                            borderColor: '#22D3EE',
+                            backgroundColor: theme === 'dark' ? '#1F2937' : '#F3F4F6',
+                            titleColor: theme === 'dark' ? '#F3F4F6' : '#1F2937',
+                            bodyColor: theme === 'dark' ? '#F3F4F6' : '#1F2937',
+                            borderColor: '#3B82F6',
                             borderWidth: 1,
                             cornerRadius: 8,
                           },
-                        },
-                        animation: {
-                          duration: 1200,
-                          easing: 'easeInOutQuart',
                         },
                       }}
                     />
                   </div>
                 )}
               </motion.div>
-            )}
 
-            {/* Activity Tab */}
-            {activeTab === 'activity' && (
+              {/* Hiring Rate Comparison */}
               <motion.div
                 variants={cardVariants}
-                className="bg-[#1E293B]/90 rounded-xl p-6 shadow-md border border-[#22D3EE]/30 glowing-border"
+                className={`p-6 rounded-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border border-blue-500/20' 
+                    : 'bg-white border border-gray-200'
+                } shadow-lg`}
               >
-                <h3 className="text-lg font-semibold text-[#F8FAFC] mb-4 font-inter">All Recent Activity</h3>
-                <div className="space-y-4">
-                  {dashboardData.recentActivity.map((activity) => (
-                    <motion.div key={activity.id} className="flex items-start space-x-3">
-                      <motion.div
-                        className={`p-2 rounded-lg ${
-                          activity.type === 'job'
-                            ? 'bg-blue-500/20'
-                            : activity.type === 'review'
-                            ? 'bg-green-500/20'
-                            : 'bg-yellow-500/20'
-                        }`}
-                        variants={iconVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        animate="float"
-                      >
-                        {activity.type === 'job' ? (
-                          <BriefcaseIcon className="h-5 w-5 text-blue-400" />
-                        ) : activity.type === 'review' ? (
-                          <UserIcon className="h-5 w-5 text-[#10B981]" />
-                        ) : (
-                          <CalendarIcon className="h-5 w-5 text-[#F59E0B]" />
-                        )}
-                      </motion.div>
-                      <div>
-                        <button
-                          onClick={() => navigate(activity.link)}
-                          className="text-sm text-[#F8FAFC] hover:text-[#22D3EE] transition-colors font-inter"
-                        >
-                          {activity.action}
-                        </button>
-                        <p className="text-xs text-[#BAE6FD] font-inter">{activity.time}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Performance Metrics */}
-            <motion.div
-              variants={cardVariants}
-              className="bg-[#1E293B]/90 rounded-xl p-6 shadow-md border border-[#22D3EE]/30 glowing-border"
-            >
-              <h3 className="text-lg font-semibold text-[#F8FAFC] mb-4 font-inter">Performance Metrics</h3>
-              <div className="space-y-4">
-                {Object.entries(dashboardData.performanceMetrics).map(([key, value]) => (
-                  <div key={key} className="flex justify-between items-center">
-                    <span className="text-[#BAE6FD] capitalize text-sm font-inter">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </span>
-                    <span className="font-semibold text-[#F8FAFC] text-sm font-inter">{value}</span>
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>Hiring Rate Comparison</h3>
+                {isLoading ? (
+                  <div className="h-64 flex items-center justify-center">
+                    <div className="animate-pulse space-y-4 w-full">
+                      <div className={`h-40 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-lg`}></div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Chatbot */}
-      <div
-        className={`fixed bottom-6 right-6 sm:w-96 max-w-[90vw] h-[500px] bg-[#1E293B]/90 rounded-xl shadow-xl border border-[#22D3EE]/30 transform transition-transform duration-300 overflow-y-auto z-50 glowing-border ${
-          isChatOpen ? 'translate-y-0' : 'translate-y-[calc(100%+24px)]'
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-[#22D3EE]/30 flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <ChatBubbleLeftRightIcon className="h-5 w-5 text-[#22D3EE]" />
-              <h3 className="text-sm font-semibold text-[#F8FAFC] font-inter">Hunter AI Assistant</h3>
+                ) : (
+                  <div className="h-64">
+                    <Bar
+                      data={hiringRateComparisonData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: 'Hiring Rate (%)',
+                              color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                            },
+                            ticks: {
+                              color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                            },
+                            grid: {
+                              color: theme === 'dark' ? '#374151' : '#E5E7EB',
+                            },
+                          },
+                          x: {
+                            ticks: {
+                              color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                            },
+                            grid: {
+                              color: theme === 'dark' ? '#374151' : '#E5E7EB',
+                            },
+                          },
+                        },
+                        plugins: {
+                          legend: {
+                            display: false,
+                          },
+                          tooltip: {
+                            backgroundColor: theme === 'dark' ? '#1F2937' : '#F3F4F6',
+                            titleColor: theme === 'dark' ? '#F3F4F6' : '#1F2937',
+                            bodyColor: theme === 'dark' ? '#F3F4F6' : '#1F2937',
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                )}
+              </motion.div>
             </div>
-            <div className="flex space-x-2">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={clearChat}
-                className="p-1 rounded-lg hover:bg-[#22D3EE]/10 transition-colors text-sm text-[#BAE6FD] font-inter tooltip"
-                data-tooltip="Clear Chat"
-              >
-                Clear
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsChatOpen(false)}
-                className="p-1 rounded-lg hover:bg-[#22D3EE]/10 transition-colors tooltip"
-                data-tooltip="Close Chat"
-              >
-                <XMarkIcon className="h-5 w-5 text-[#F8FAFC]" />
-              </motion.button>
-            </div>
-          </div>
 
-          <div
-            ref={chatContainerRef}
-            className="flex-1 p-4 overflow-y-auto space-y-3"
-          >
-            {chatMessages.map((msg, index) => (
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Quick Insights Widget */}
               <motion.div
-                key={index}
-                variants={chatBubbleVariants}
-                initial="hidden"
-                animate="visible"
-                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                variants={cardVariants}
+                className={`p-6 rounded-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border border-blue-500/20' 
+                    : 'bg-white border border-gray-200'
+                } shadow-lg`}
               >
-                <div
-                  className={`max-w-[80%] p-2 rounded-lg text-sm font-inter ${
-                    msg.sender === 'user'
-                      ? 'bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] text-[#0F172A]'
-                      : 'bg-[#22D3EE]/10 text-[#F8FAFC]'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{msg.message}</p>
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>Quick Insights</h3>
+                {insights.length === 0 ? (
+                  <p className={`text-sm font-light ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                    No insights available at the moment.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {insights.map((insight) => (
+                      <motion.div
+                        key={insight.id}
+                        whileHover={{ scale: 1.01 }}
+                        className={`p-3 ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-200/50'} rounded-lg`}
+                      >
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{insight.message}</p>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={insight.action}
+                          className="text-blue-400 hover:text-blue-300 text-sm mt-1"
+                        >
+                          Take Action
+                        </motion.button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Hunter AI */}
+              <motion.div
+                variants={cardVariants}
+                className={`p-6 rounded-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border border-blue-500/20' 
+                    : 'bg-white border border-gray-200'
+                } shadow-lg`}
+              >
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-4`}>Hunter AI</h3>
+                <div className={`p-6 rounded-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border border-blue-500/20' 
+                    : 'bg-white border border-gray-200'
+                } shadow-lg h-[600px] flex flex-col`}>
+                  {/* Chat Messages */}
+                  <div 
+                    ref={hunterMessagesRef}
+                    className="flex-1 overflow-y-auto scrollbar-thin mb-4 space-y-4"
+                  >
+                    <AnimatePresence>
+                      {hunterMessages.map((msg, index) => (
+                        <motion.div
+                          key={index}
+                          variants={messageVariants}
+                          initial="hidden"
+                          animate="visible"
+                          className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2`}
+                        >
+                          {msg.sender === 'hunter' && (
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden">
+                              <img 
+                                src="https://api.dicebear.com/7.x/bottts/svg?seed=Hunter" 
+                                alt="Hunter AI" 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <motion.div
+                            initial={{ x: msg.sender === 'user' ? 20 : -20 }}
+                            animate={{ x: 0 }}
+                            className={`max-w-[80%] rounded-lg p-3 ${
+                              msg.sender === 'user'
+                                ? theme === 'dark'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-blue-500 text-white'
+                                : theme === 'dark'
+                                ? 'bg-gray-700 text-gray-200'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            <p className="text-sm">{msg.message}</p>
+                          </motion.div>
+                          {msg.sender === 'user' && (
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center overflow-hidden">
+                              <img 
+                                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Troy" 
+                                alt="User" 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {isHunterLoading && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex justify-start items-end gap-2"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden">
+                          <img 
+                            src="https://api.dicebear.com/7.x/bottts/svg?seed=Hunter" 
+                            alt="Hunter AI" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className={`max-w-[80%] rounded-lg p-3 ${
+                          theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+                        }`}>
+                          <div className="flex space-x-2">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-100" />
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-200" />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Chat Features */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {chatFeatures.map((feature) => (
+                      <motion.button
+                        key={feature.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={feature.action}
+                        className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-sm ${
+                          theme === 'dark'
+                            ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {feature.icon}
+                        <span>{feature.label}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+
+                  {/* Chat Input */}
+                  <form onSubmit={handleHunterSubmit} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={hunterInput}
+                      onChange={(e) => setHunterInput(e.target.value)}
+                      placeholder="Ask Hunter AI..."
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 text-white placeholder-gray-400'
+                          : 'bg-gray-100 text-gray-900 placeholder-gray-500'
+                      } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      type="submit"
+                      disabled={!hunterInput.trim() || isHunterLoading}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                        !hunterInput.trim() || isHunterLoading
+                          ? theme === 'dark'
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : theme === 'dark'
+                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-blue-500 text-white hover:bg-blue-600'
+                      }`}
+                    >
+                      Send
+                    </motion.button>
+                  </form>
                 </div>
               </motion.div>
-            ))}
-            {isChatLoading && (
-              <div className="flex justify-start">
-                <div className="p-2 rounded-lg bg-[#22D3EE]/10 text-[#F8FAFC] text-sm font-inter">
-                  <span className="inline-block animate-pulse">Typing...</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <form onSubmit={handleChatSubmit} className="p-4 border-t border-[#22D3EE]/30">
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask me anything..."
-                className="flex-1 p-2 text-sm rounded-lg bg-transparent text-[#F8FAFC] border border-[#22D3EE]/30 focus:outline-none focus:ring-2 focus:ring-[#22D3EE] placeholder-[#BAE6FD] font-inter"
-              />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                type="submit"
-                disabled={isChatLoading}
-                className="p-2 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                <PaperAirplaneIcon className="h-4 w-4 text-[#0F172A]" />
-              </motion.button>
             </div>
-          </form>
-        </div>
+          </div>
+        </motion.div>
       </div>
 
-      {/* Chat Toggle Button */}
-      {!isChatOpen && (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 p-3 bg-gradient-to-r from-[#22D3EE] to-[#38BDF8] rounded-full shadow-lg transition-colors z-40 tooltip"
-          data-tooltip="Open Chat"
-        >
-          <ChatBubbleLeftRightIcon className="h-5 w-5 text-[#0F172A]" />
-        </motion.button>
-      )}
-
-      {/* Add Google Fonts and Styles */}
+      {/* Styles */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-        .font-inter {
-          font-family: 'Inter', sans-serif;
+        body.dark {
+          background: linear-gradient(135deg, #111827 0%, #1F2937 100%);
+        }
+        body.light {
+          background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%);
         }
 
-        .hexagon-overlay {
-          background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><g fill="none" stroke="#22D3EE" stroke-opacity="0.2"><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(20, 20) scale(0.8)"/><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(80, 60) scale(0.6)"/><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(120, 30) scale(0.5)"/><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(180, 80) scale(0.7)"/><path d="M30 10 L50 20 L50 40 L30 50 L10 40 L10 20 Z" transform="translate(250, 40) scale(0.6)"/></g></svg>');
-          background-size: 300px 300px;
-          background-repeat: repeat;
+        /* Smooth scrollbar for Hunter messages */
+        .scrollbar-thin {
+          scrollbar-width: thin;
+          scrollbar-color: #3B82F6 transparent;
+        }
+        .scrollbar-thin::-webkit-scrollbar {
+          width: 6px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+          background: ${theme === 'dark' ? '#1F2937' : '#E5E7EB'};
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+          background: #3B82F6;
+          border-radius: 3px;
         }
 
-        .glowing-border {
-          position: relative;
-          transition: all 0.3s ease;
+        /* Prevent grid overflow */
+        .overflow-hidden {
+          overflow: hidden;
         }
 
-        .glowing-border:hover {
-          box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+        /* Glassmorphism effect */
+        .backdrop-blur-sm {
+          backdrop-filter: blur(8px);
         }
 
-        .glowing-border::before {
-          content: '';
-          position: absolute;
-          top: -2px;
-          left: -2px;
-          right: -2px;
-          bottom: -2px;
-          background: linear-gradient(
-            45deg,
-            rgba(34, 211, 238, 0.3),
-            rgba(56, 189, 248, 0.3),
-            rgba(34, 211, 238, 0.3)
-          );
-          z-index: -1;
-          border-radius: 14px;
-          animation: borderGlow 3s linear infinite;
+        /* Progress bar animation */
+        .progress-bar {
+          transition: width 0.5s ease-in-out;
         }
 
-        @keyframes borderGlow {
-          0% {
-            background-position: 0% 50%;
+        /* Drag-and-drop styling */
+        .draggable-item:hover {
+          cursor: grab;
+        }
+        .draggable-item:active {
+          cursor: grabbing;
+        }
+
+        /* Tooltip styling for MUI */
+        .MuiTooltip-tooltip {
+          background-color: ${theme === 'dark' ? '#1F2937' : '#F3F4F6'} !important;
+          color: ${theme === 'dark' ? '#F3F4F6' : '#1F2937'} !important;
+          border: 1px solid #3B82F6 !important;
+          border-radius: 8px !important;
+          padding: 8px 12px !important;
+          font-size: 12px !important;
+        }
+        .MuiTooltip-arrow {
+          color: #3B82F6 !important;
+        }
+
+        /* Animation for collapsible sections */
+        .collapsible-section {
+          transition: height 0.3s ease-in-out;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+          .grid-cols-1 {
+            grid-template-columns: 1fr;
           }
-          50% {
-            background-position: 100% 50%;
+          .text-4xl {
+            font-size: 1.875rem;
+            line-height: 2.25rem;
           }
-          100% {
-            background-position: 0% 50%;
+          .text-lg {
+            font-size: 1.125rem;
+            line-height: 1.75rem;
           }
-        }
-
-        .tooltip {
-          position: relative;
-        }
-
-        .tooltip:hover::after {
-          content: attr(data-tooltip);
-          position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%);
-          background: #1E293B;
-          color: #F8FAFC;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-          white-space: nowrap;
-          z-index: 50;
-          border: 1px solid #22D3EE;
+          .h-64 {
+            height: 16rem;
+          }
         }
       `}</style>
     </div>

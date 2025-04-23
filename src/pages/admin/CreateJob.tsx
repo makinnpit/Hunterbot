@@ -9,7 +9,6 @@ import {
   Stepper,
   Step,
   StepLabel,
-  Paper,
   IconButton,
   CircularProgress,
   Modal,
@@ -22,8 +21,6 @@ import {
   Alert,
   InputAdornment,
   SelectChangeEvent,
-  TextFieldProps,
-  Tooltip,
   Card,
   CardContent,
   Grid,
@@ -31,21 +28,22 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Avatar,
-  Badge,
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SparklesIcon,
   XMarkIcon,
   PlusIcon,
-  PencilIcon,
   TrashIcon,
   PlusCircleIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  ClockIcon,
   CalendarIcon,
   UserGroupIcon,
   BriefcaseIcon,
@@ -57,15 +55,12 @@ import {
   LightBulbIcon,
   UserIcon,
   BuildingOfficeIcon,
-  MapPinIcon,
-  CurrencyDollarIcon,
-  StarIcon,
-  ShieldCheckIcon,
   EyeIcon,
+  ArrowPathRoundedSquareIcon,
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../../firebase/firebaseConfig'; // Adjust the path to your firebaseConfig file
+import { db } from '../../firebase/firebaseConfig';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface CreateJobModalProps {
@@ -116,6 +111,11 @@ interface FormData {
   company: string;
 }
 
+interface ChatMessage {
+  sender: 'User' | 'Bot';
+  text: string;
+}
+
 const steps = ['Setup', 'Questions', 'Customization', 'Invite Candidate'];
 
 const companies: Company[] = [
@@ -131,29 +131,29 @@ const companies: Company[] = [
       'Technical SEO Expert',
       'Content Writer',
       'Link Building Specialist',
-      'SEO Project Manager'
-    ]
+      'SEO Project Manager',
+    ],
   },
   {
     name: 'Google',
-    jobs: ['Software Engineer', 'Product Manager', 'Data Scientist', 'UX Designer', 'DevOps Engineer']
+    jobs: ['Software Engineer', 'Product Manager', 'Data Scientist', 'UX Designer', 'DevOps Engineer'],
   },
   {
     name: 'Microsoft',
-    jobs: ['Software Developer', 'Cloud Architect', 'ML Engineer', 'Program Manager', 'Full Stack Developer']
+    jobs: ['Software Developer', 'Cloud Architect', 'ML Engineer', 'Program Manager', 'Full Stack Developer'],
   },
   {
     name: 'Amazon',
-    jobs: ['SDE', 'Solutions Architect', 'Technical Program Manager', 'Research Scientist', 'Frontend Engineer']
+    jobs: ['SDE', 'Solutions Architect', 'Technical Program Manager', 'Research Scientist', 'Frontend Engineer'],
   },
   {
     name: 'Meta',
-    jobs: ['Software Engineer', 'Product Designer', 'Data Engineer', 'Research Engineer', 'Security Engineer']
+    jobs: ['Software Engineer', 'Product Designer', 'Data Engineer', 'Research Engineer', 'Security Engineer'],
   },
   {
     name: 'Apple',
-    jobs: ['iOS Developer', 'Machine Learning Engineer', 'Systems Engineer', 'Software Architect', 'QA Engineer']
-  }
+    jobs: ['iOS Developer', 'Machine Learning Engineer', 'Systems Engineer', 'Software Architect', 'QA Engineer'],
+  },
 ];
 
 const questionTypes = [
@@ -216,6 +216,11 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ open, onClose }): JSX.E
   const [generationProgress, setGenerationProgress] = useState<number>(0);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [previewData, setPreviewData] = useState<any>(null);
+  const [useAI, setUseAI] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { sender: 'Bot', text: 'Hi! I\'m here to help you create a job posting. Please provide the job title and company in JSON format, like this:\n{\n  "jobTitle": "Software Engineer",\n  "company": "Google"\n}' },
+  ]);
+  const [userPrompt, setUserPrompt] = useState('');
 
   const languages = ['English', 'Spanish', 'French', 'German'];
   const timezones = ['UTC', 'EST', 'PST', 'CET'];
@@ -314,14 +319,11 @@ Keep the response in strict JSON format.`;
         }
       );
 
-      console.log('Gemini API Response:', response.data);
-
       let parsedQuestions: GeneratedQuestion[] = [];
       
       if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
         const generatedText = response.data.candidates[0].content.parts[0].text.trim();
         try {
-          // Remove any potential markdown formatting or extra text
           const jsonStart = generatedText.indexOf('[');
           const jsonEnd = generatedText.lastIndexOf(']') + 1;
           const jsonString = generatedText.slice(jsonStart, jsonEnd);
@@ -341,7 +343,6 @@ Keep the response in strict JSON format.`;
             keyPoints: Array.isArray(item.keyPoints) ? item.keyPoints.map(String) : []
           }));
 
-          // Validate the generated questions
           if (parsedQuestions.length === 0) {
             throw new Error('No questions were generated');
           }
@@ -353,14 +354,12 @@ Keep the response in strict JSON format.`;
           setGenerationProgress(100);
           return parsedQuestions;
         } catch (parseError) {
-          console.error('Parse error:', parseError, 'Generated text:', generatedText);
           throw new Error('Failed to parse generated questions. Please try again.');
         }
       } else {
         throw new Error('Invalid response format from API');
       }
     } catch (error: unknown) {
-      console.error('Question generation error:', error);
       if (error instanceof Error) {
         setError(error.message);
       } else {
@@ -372,44 +371,206 @@ Keep the response in strict JSON format.`;
     }
   };
 
-  const handleQuestionTypeChange = (event: React.MouseEvent<HTMLElement>, newTypes: string[]) => {
-    setSelectedQuestionTypes(newTypes);
+  const generateJobDetailsWithGemini = async (jobTitle: string, company: string): Promise<{ description: string; skills: string[] }> => {
+    try {
+      const response = await axios.post(
+        process.env.REACT_APP_GEMINI_API_URL || '',
+        {
+          model: process.env.REACT_APP_GEMINI_MODEL,
+          contents: [{
+            role: "user",
+            parts: [{
+              text: `Generate a job description and a list of required skills for a ${jobTitle} position at ${company}. Return the result in JSON format only, with no additional text.
+
+Expected JSON format:
+{
+  "description": "string",
+  "skills": ["string"]
+}
+
+Requirements:
+- The description should be 2-3 sentences long, professional, and tailored to the job title and company.
+- The skills should be a list of 3-5 relevant skills for the job title.
+- Do not include any other fields.`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.5,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': process.env.REACT_APP_GEMINI_API_KEY
+          }
+        }
+      );
+
+      const generatedText = response.data.candidates[0].content.parts[0].text.trim();
+      const parsed = JSON.parse(generatedText);
+
+      if (!parsed.description || !Array.isArray(parsed.skills)) {
+        throw new Error('Failed to generate job description or skills.');
+      }
+
+      return {
+        description: parsed.description,
+        skills: parsed.skills,
+      };
+    } catch (error) {
+      throw new Error('Failed to generate job description and skills. Using defaults instead.');
+    }
   };
 
-  const handleComplexityChange = (event: Event, newValue: number | number[]) => {
-    setQuestionComplexity(newValue as number);
+  const parseUserPrompt = (prompt: string): { jobTitle: string; company: string } => {
+    try {
+      const parsed = JSON.parse(prompt);
+      if (!parsed.jobTitle || !parsed.company) {
+        throw new Error('Missing jobTitle or company in JSON input.');
+      }
+      return {
+        jobTitle: parsed.jobTitle,
+        company: parsed.company,
+      };
+    } catch (error) {
+      throw new Error('Invalid JSON format. Please provide the job title and company in JSON format, like this:\n{\n  "jobTitle": "Software Engineer",\n  "company": "Google"\n}');
+    }
   };
 
-  const handlePreview = () => {
-    setPreviewData({
-      jobTitle: formData.jobTitle,
-      company: selectedCompany,
-      description: formData.description,
-      requirements: formData.skills,
-      questions: questions,
-      interviewProcess: {
-        rounds: formData.interviewRounds,
-        codingChallenge: formData.codingChallenge,
-        systemDesign: formData.systemDesign,
-        pairProgramming: formData.pairProgramming,
-      },
-    });
-    setShowPreview(true);
+  const autoCreateJob = async (jobTitle: string, company: string) => {
+    setLoadingAI(true);
+    setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Creating job posting for you...' }]);
+
+    try {
+      // Step 1: Validate company and job title
+      const jobs = companies.find(c => c.name === company)?.jobs || [];
+      if (!jobs.includes(jobTitle)) {
+        throw new Error(`Job title "${jobTitle}" is not available for ${company}. Available jobs: ${jobs.join(', ')}`);
+      }
+      setSelectedCompany(company);
+      setAvailableJobs(jobs);
+
+      // Step 2: Generate job description and skills
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Generating job description and requirements...' }]);
+      let description = `We are looking for a ${jobTitle} to join ${company}. The ideal candidate will contribute to our mission of innovation and excellence.`;
+      let skills = ['Teamwork', 'Communication', 'Problem-solving'];
+
+      try {
+        const generatedDetails = await generateJobDetailsWithGemini(jobTitle, company);
+        description = generatedDetails.description;
+        skills = generatedDetails.skills;
+      } catch (error) {
+        setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Failed to generate description and skills. Using defaults.' }]);
+      }
+
+      // Step 3: Populate formData with defaults and generated details
+      const defaultFormData: FormData = {
+        jobTitle,
+        company,
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        language: 'English',
+        timezone: 'UTC',
+        description,
+        customQuestions: '',
+        skills,
+        experience: 'Mid Level',
+        salary: 'Competitive',
+        location: 'Remote',
+        remote: true,
+        assessment: false,
+        candidates: [],
+        newSkill: '',
+        newCandidate: '',
+        interviewRounds: 1,
+        codingChallenge: false,
+        systemDesign: false,
+        pairProgramming: false,
+      };
+
+      setFormData(defaultFormData);
+
+      // Step 4: Generate questions
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Generating interview questions...' }]);
+      const generatedQuestions = await generateQuestionsWithGemini(
+        jobTitle,
+        ['technical', 'behavioral'], // Default question types
+        'intermediate', // Default difficulty
+        5, // Default question count
+        3 // Default complexity
+      );
+
+      const formattedQuestions = generatedQuestions.map((q, index) =>
+        `Question ${index + 1}:\n` +
+        `[${q.category}] (${q.difficulty} Level, Complexity: ${q.complexity}/5)\n\n` +
+        `${q.question}\n\n` +
+        `Estimated Time: ${q.estimatedTime} minutes\n\n` +
+        `Key Points to Look For:\n${q.keyPoints.map(point => `• ${point}`).join('\n')}\n` +
+        `${'─'.repeat(50)}\n`
+      ).join('\n');
+
+      setQuestions(generatedQuestions.map(q => q.question));
+      setFormData((prev) => ({
+        ...prev,
+        customQuestions: formattedQuestions,
+      }));
+
+      // Step 5: Create the job
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Finalizing job creation...' }]);
+      const sanitizedJobData = Object.fromEntries(
+        Object.entries({
+          ...defaultFormData,
+          company,
+          generatedQuestions: generatedQuestions.map(q => q.question),
+          customQuestions: formattedQuestions,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          status: 'active',
+        }).filter(([_, value]) => value !== undefined)
+      );
+
+      const docRef = await addDoc(collection(db, 'createjobs'), sanitizedJobData);
+
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: `Job created successfully! Job ID: ${docRef.id}` }]);
+      setTimeout(() => {
+        onClose();
+        navigate('/admin/jobs');
+      }, 2000);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create job. Please try again.';
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: errorMessage }]);
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
+  const handleChatSubmit = async () => {
+    if (!userPrompt.trim()) return;
+
+    setChatMessages((prev) => [...prev, { sender: 'User', text: userPrompt }]);
+
+    try {
+      const { jobTitle, company } = parseUserPrompt(userPrompt);
+      await autoCreateJob(jobTitle, company);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred. Please try again.';
+      setChatMessages((prev) => [...prev, { sender: 'Bot', text: errorMessage }]);
+    }
   };
 
   const handleNext = async () => {
     if (activeStep === 0) {
-      // Validate required fields
       if (!formData.jobTitle || !formData.deadline || !formData.language || !formData.timezone) {
         setError('Please fill in all required fields');
         return;
       }
 
       setIsLoading(true);
-      setError(undefined); // Clear any previous errors
+      setError(undefined);
 
       try {
-        // Start progress indication
         setIsGenerating(true);
         setGenerationProgress(10);
 
@@ -421,11 +582,9 @@ Keep the response in strict JSON format.`;
           questionComplexity
         );
 
-        // Update progress
         setGenerationProgress(50);
 
-        // Format questions with categories and key points
-        const formattedQuestions = generatedQuestions.map((q, index) => 
+        const formattedQuestions = generatedQuestions.map((q, index) =>
           `Question ${index + 1}:\n` +
           `[${q.category}] (${q.difficulty} Level, Complexity: ${q.complexity}/5)\n\n` +
           `${q.question}\n\n` +
@@ -434,23 +593,17 @@ Keep the response in strict JSON format.`;
           `${'─'.repeat(50)}\n`
         ).join('\n');
 
-        // Update progress
         setGenerationProgress(80);
 
-        // Update state with generated questions
         setQuestions(generatedQuestions.map(q => q.question));
         setFormData(prev => ({
           ...prev,
           customQuestions: formattedQuestions
         }));
 
-        // Complete progress
         setGenerationProgress(100);
-        
-        // Move to next step
         setActiveStep(prevStep => prevStep + 1);
       } catch (error: unknown) {
-        console.error('Question generation error:', error);
         if (error instanceof Error) {
           setError(error.message);
         } else {
@@ -487,7 +640,7 @@ Keep the response in strict JSON format.`;
 
   const handleSaveTemplateName = (template: Template) => {
     if (templateName.trim()) {
-      setGeneratedQuestions(generatedQuestions.map(t => 
+      setGeneratedQuestions(generatedQuestions.map(t =>
         t.id === template.id ? { ...t, name: templateName.trim() } : t
       ));
     }
@@ -532,8 +685,7 @@ Keep the response in strict JSON format.`;
   const handleSubmit = async () => {
     try {
       setIsLoading(true);
-  
-      // Sanitize jobData to remove undefined values
+
       const sanitizedJobData = Object.fromEntries(
         Object.entries({
           ...formData,
@@ -541,23 +693,19 @@ Keep the response in strict JSON format.`;
           generatedQuestions: questions,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          status: 'active', // Ensure status is set explicitly
+          status: 'active',
         }).filter(([_, value]) => value !== undefined)
       );
-  
-      console.log('Sanitized job data:', sanitizedJobData); // Log for debugging
-  
+
       const docRef = await addDoc(collection(db, 'createjobs'), sanitizedJobData);
-  
-      console.log('Job created with ID:', docRef.id);
-      setSuccessMessage('Job created successfully and stored in Firestore!');
+
+      setSuccessMessage('Job created successfully!');
       setTimeout(() => {
         onClose();
         navigate('/admin/jobs');
       }, 2000);
     } catch (error) {
-      console.error('Detailed Firestore error:', error);
-      setError('Failed to create job and save to Firestore. Please try again.');
+      setError('Failed to create job. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -573,8 +721,8 @@ Keep the response in strict JSON format.`;
           <CircularProgress />
         </Box>
       ) : error && (
-        <Alert 
-          severity="error" 
+        <Alert
+          severity="error"
           sx={{ mb: 2 }}
         >
           <Box component="div">
@@ -637,8 +785,8 @@ Keep the response in strict JSON format.`;
   );
 
   return (
-    <Modal 
-      open={open} 
+    <Modal
+      open={open}
       onClose={onClose}
       sx={{
         display: 'flex',
@@ -646,7 +794,7 @@ Keep the response in strict JSON format.`;
         justifyContent: 'center',
       }}
     >
-      <Box 
+      <Box
         sx={{
           width: '90%',
           maxWidth: 1000,
@@ -658,23 +806,47 @@ Keep the response in strict JSON format.`;
           flexDirection: 'column',
         }}
       >
-        <Box sx={{ 
-          p: 2, 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <Box sx={{
+          p: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         }}>
           <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
-            {steps[activeStep]}
+            {useAI ? 'AI-Driven Job Creation' : steps[activeStep]}
           </Typography>
-          <IconButton onClick={onClose} sx={{ color: '#9ca3af' }}>
-            <XMarkIcon className="h-6 w-6" />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={useAI}
+                  onChange={(e) => {
+                    setUseAI(e.target.checked);
+                    setActiveStep(0);
+                    setChatMessages([{ sender: 'Bot', text: 'Hi! I\'m here to help you create a job posting. Please provide the job title and company in JSON format, like this:\n{\n  "jobTitle": "Software Engineer",\n  "company": "Google"\n}' }]);
+                  }}
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: '#8b5cf6',
+                      '& + .MuiSwitch-track': {
+                        backgroundColor: '#6d28d9',
+                      },
+                    },
+                  }}
+                />
+              }
+              label="Use AI to Create Job"
+              sx={{ color: '#f3f4f6' }}
+            />
+            <IconButton onClick={onClose} sx={{ color: '#9ca3af' }}>
+              <XMarkIcon className="h-6 w-6" />
+            </IconButton>
+          </Box>
         </Box>
 
-        <Box sx={{ 
-          p: 3, 
+        <Box sx={{
+          p: 3,
           overflowY: 'auto',
           '&::-webkit-scrollbar': {
             width: '8px',
@@ -691,724 +863,819 @@ Keep the response in strict JSON format.`;
             },
           },
         }}>
-          <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel
-                  sx={{
-                    '& .MuiStepLabel-label': {
-                      color: '#9ca3af',
-                      '&.Mui-active': { color: '#8b5cf6' },
-                      '&.Mui-completed': { color: '#10b981' }
-                    },
-                    '& .MuiStepIcon-root': {
-                      color: '#4b5563',
-                      '&.Mui-active': { color: '#8b5cf6' },
-                      '&.Mui-completed': { color: '#10b981' }
-                    }
-                  }}
-                >
-                  {label}
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-
-          {successMessage && (
-            <Alert 
-              severity="success" 
-              sx={{ mb: 2 }}
-              icon={<CheckCircleIcon className="h-5 w-5" />}
-            >
-              {successMessage}
-            </Alert>
-          )}
-
-          {error && (
-            <Alert 
-              severity="error" 
-              sx={{ mb: 2 }}
-              icon={<ExclamationCircleIcon className="h-5 w-5" />}
-            >
-              {error}
-              <Button
-                color="inherit"
-                size="small"
-                onClick={() => setError(undefined)}
-                sx={{ ml: 2 }}
-              >
-                Dismiss
-              </Button>
-            </Alert>
-          )}
-
-          {activeStep === 0 && (
+          {useAI ? (
             <Box sx={{ mt: 4 }}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <BuildingOfficeIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                        <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
-                          Company & Role
-                        </Typography>
-                      </Box>
-                      <FormControl fullWidth sx={{ mb: 3 }}>
-                        <InputLabel sx={{ color: '#9ca3af' }}>Company *</InputLabel>
-                        <Select
-                          value={selectedCompany}
-                          onChange={handleCompanyChange}
-                          required
-                          sx={{
-                            bgcolor: '#1f2937',
-                            borderRadius: 2,
-                            '& .MuiSelect-select': { color: '#f3f4f6' }
-                          }}
-                        >
-                          {companies.map((company) => (
-                            <MenuItem key={company.name} value={company.name}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Avatar
-                                  sx={{ width: 24, height: 24, mr: 1 }}
-                                  src={`/logos/${company.name.toLowerCase()}.png`}
-                                >
-                                  {company.name[0]}
-                                </Avatar>
-                                {company.name}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <FormControl fullWidth sx={{ mb: 3 }}>
-                        <InputLabel sx={{ color: '#9ca3af' }}>Job Title *</InputLabel>
-                        <Select
-                          value={formData.jobTitle}
-                          onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
-                          required
-                          disabled={!selectedCompany}
-                          sx={{
-                            bgcolor: '#1f2937',
-                            borderRadius: 2,
-                            '& .MuiSelect-select': { color: '#f3f4f6' }
-                          }}
-                        >
-                          {availableJobs.map((job) => (
-                            <MenuItem key={job} value={job}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <BriefcaseIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                                {job}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <CalendarIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                        <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
-                          Timeline & Location
-                        </Typography>
-                      </Box>
-                      <TextField
-                        fullWidth
-                        label="Deadline *"
-                        name="deadline"
-                        type="date"
-                        value={formData.deadline}
-                        onChange={handleInputChange}
-                        required
-                        InputLabelProps={{ shrink: true }}
-                        sx={{
-                          mb: 3,
-                          '& .MuiOutlinedInput-root': {
-                            bgcolor: '#1f2937',
-                            borderRadius: 2,
-                            '& fieldset': { borderColor: '#4b5563' }
-                          }
-                        }}
-                      />
-
-                      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                        <FormControl fullWidth>
-                          <InputLabel sx={{ color: '#9ca3af' }}>Language *</InputLabel>
-                          <Select
-                            name="language"
-                            value={formData.language}
-                            onChange={handleSelectChange}
-                            displayEmpty
-                            sx={{
-                              bgcolor: '#1f2937',
-                              borderRadius: 2,
-                              '& .MuiSelect-select': { color: '#f3f4f6' }
-                            }}
-                          >
-                            {languages.map((lang) => (
-                              <MenuItem key={lang} value={lang}>{lang}</MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-
-                        <FormControl fullWidth>
-                          <InputLabel sx={{ color: '#9ca3af' }}>Timezone *</InputLabel>
-                          <Select
-                            name="timezone"
-                            value={formData.timezone}
-                            onChange={handleSelectChange}
-                            displayEmpty
-                            sx={{
-                              bgcolor: '#1f2937',
-                              borderRadius: 2,
-                              '& .MuiSelect-select': { color: '#f3f4f6' }
-                            }}
-                          >
-                            {timezones.map((tz) => (
-                              <MenuItem key={tz} value={tz}>{tz}</MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <DocumentTextIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                        <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
-                          Job Description
-                        </Typography>
-                      </Box>
-                      <TextField
-                        fullWidth
-                        label="Description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        multiline
-                        rows={6}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            bgcolor: '#1f2937',
-                            borderRadius: 2,
-                            '& fieldset': { borderColor: '#4b5563' }
-                          }
-                        }}
-                      />
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-
-          {activeStep === 1 && (
-            <Box sx={{ mt: 4 }}>
-              <Card sx={{ bgcolor: '#374151', borderRadius: 2, mb: 3 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                    <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
-                      Question Generation Settings
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
-                      Question Types
-                    </Typography>
-                    <ToggleButtonGroup
-                      value={selectedQuestionTypes}
-                      onChange={handleQuestionTypeChange}
-                      aria-label="question types"
-                      sx={{ flexWrap: 'wrap', gap: 1 }}
-                    >
-                      {questionTypes.map((type) => (
-                        <ToggleButton
-                          key={type.value}
-                          value={type.value}
-                          sx={{
-                            color: '#f3f4f6',
-                            borderColor: '#4b5563',
-                            '&.Mui-selected': {
-                              bgcolor: '#8b5cf6',
-                              color: '#ffffff',
-                            },
-                          }}
-                        >
-                          <type.icon className="h-5 w-5 mr-2" />
-                          {type.label}
-                        </ToggleButton>
-                      ))}
-                    </ToggleButtonGroup>
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
-                      Difficulty Level
-                    </Typography>
-                    <ToggleButtonGroup
-                      value={difficultyLevel}
-                      exclusive
-                      onChange={(e, value) => setDifficultyLevel(value)}
-                      aria-label="difficulty level"
-                      sx={{ flexWrap: 'wrap', gap: 1 }}
-                    >
-                      {difficultyLevels.map((level) => (
-                        <ToggleButton
-                          key={level.value}
-                          value={level.value}
-                          sx={{
-                            color: '#f3f4f6',
-                            borderColor: '#4b5563',
-                            '&.Mui-selected': {
-                              bgcolor: level.color,
-                              color: '#ffffff',
-                            },
-                          }}
-                        >
-                          {level.label}
-                        </ToggleButton>
-                      ))}
-                    </ToggleButtonGroup>
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
-                      Question Complexity
-                    </Typography>
-                    <Slider
-                      value={questionComplexity}
-                      onChange={handleComplexityChange}
-                      min={1}
-                      max={5}
-                      step={1}
-                      marks
-                      valueLabelDisplay="auto"
-                      sx={{
-                        color: '#8b5cf6',
-                        '& .MuiSlider-markLabel': { color: '#9ca3af' },
-                      }}
-                    />
-                  </Box>
-
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button
-                      startIcon={isGenerating ? <CircularProgress size={20} /> : <SparklesIcon className="h-5 w-5" />}
-                      onClick={async () => {
-                        try {
-                          setError(undefined);
-                          const generated = await generateQuestionsWithGemini(
-                            formData.jobTitle,
-                            selectedQuestionTypes,
-                            difficultyLevel,
-                            questionCount,
-                            questionComplexity
-                          );
-                          
-                          setQuestions(generated.map(q => q.question));
-                          setFormData({
-                            ...formData,
-                            customQuestions: generated.map(q => 
-                              `[${q.category}] (${q.difficulty}, Complexity: ${q.complexity}/5)\n${q.question}\n\nKey Points:\n${q.keyPoints.join('\n')}`
-                            ).join('\n\n')
-                          });
-                          
-                        } catch (err) {
-                          setError('Failed to generate questions. Please try again.');
-                        }
-                      }}
-                      disabled={isGenerating || !formData.jobTitle}
-                      sx={{
-                        bgcolor: '#8b5cf6',
-                        color: '#ffffff',
-                        px: 4,
-                        py: 1.5,
-                        borderRadius: 2,
-                        '&:hover': { bgcolor: '#7c3aed' }
-                      }}
-                    >
-                      {isGenerating ? 'Generating...' : 'Generate Questions'}
-                    </Button>
-
-                    {isGenerating && (
-                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-                        <CircularProgress
-                          variant="determinate"
-                          value={generationProgress}
-                          sx={{ color: '#8b5cf6', mr: 2 }}
-                        />
-                        <Typography variant="body2" sx={{ color: '#9ca3af' }}>
-                          Generating questions... {generationProgress}%
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-                </CardContent>
-              </Card>
-
-              {questions.length > 0 && (
-                <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <DocumentTextIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                      <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
-                        Generated Questions
-                      </Typography>
-                    </Box>
-                    <Box>
-                      {questions.map((question, index) => (
-                        <Card
-                          key={index}
-                          sx={{
-                            mb: 2,
-                            bgcolor: '#1f2937',
-                            borderRadius: 2,
-                            '&:hover': { bgcolor: '#2d3748' }
-                          }}
-                        >
-                          <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                              <Typography variant="subtitle2" sx={{ color: '#9ca3af' }}>
-                                Question {index + 1}
-                              </Typography>
-                              <IconButton
-                                size="small"
-                                onClick={() => {
-                                  const newQuestions = questions.filter((_, i) => i !== index);
-                                  setQuestions(newQuestions);
-                                }}
-                                sx={{ color: '#9ca3af' }}
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </IconButton>
-                            </Box>
-                            <TextField
-                              fullWidth
-                              multiline
-                              value={question}
-                              onChange={(e) => {
-                                const newQuestions = [...questions];
-                                newQuestions[index] = e.target.value;
-                                setQuestions(newQuestions);
-                              }}
-                              sx={{
-                                '& .MuiOutlinedInput-root': {
-                                  color: '#f3f4f6',
-                                  '& fieldset': { borderColor: '#4b5563' }
-                                }
-                              }}
-                            />
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </Box>
-                  </CardContent>
-                </Card>
-              )}
-            </Box>
-          )}
-
-          {activeStep === 2 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" sx={{ mb: 3, color: '#f3f4f6' }}>
-                Job Requirements & Details
+              <Typography variant="h6" sx={{ color: '#f3f4f6', mb: 2 }}>
+                Chat with Job Creation Bot
               </Typography>
-
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel sx={{ color: '#9ca3af' }}>Experience Level</InputLabel>
-                <Select
-                  value={formData.experience}
-                  onChange={handleSelectChange}
-                  name="experience"
-                  sx={{
-                    bgcolor: '#374151',
-                    borderRadius: 2,
-                    '& .MuiSelect-select': { color: '#f3f4f6' }
-                  }}
-                >
-                  {experienceLevels.map((level) => (
-                    <MenuItem key={level} value={level}>{level}</MenuItem>
+              <Box
+                sx={{
+                  maxHeight: 400,
+                  overflowY: 'auto',
+                  mb: 3,
+                  p: 2,
+                  bgcolor: '#2d3748',
+                  borderRadius: 2,
+                }}
+              >
+                <List>
+                  {chatMessages.map((msg, idx) => (
+                    <ListItem key={idx} sx={{ flexDirection: msg.sender === 'Bot' ? 'row' : 'row-reverse' }}>
+                      <Avatar
+                        sx={{
+                          bgcolor: msg.sender === 'Bot' ? '#8b5cf6' : '#4b5563',
+                          mr: msg.sender === 'Bot' ? 2 : 0,
+                          ml: msg.sender === 'User' ? 2 : 0,
+                        }}
+                      >
+                        {msg.sender === 'Bot' ? <ArrowPathRoundedSquareIcon className="h-5 w-5" /> : <UserIcon className="h-5 w-5" />}
+                      </Avatar>
+                      <Paper
+                        sx={{
+                          p: 2,
+                          maxWidth: '70%',
+                          bgcolor: msg.sender === 'Bot' ? '#374151' : '#4b5563',
+                          color: '#f3f4f6',
+                          borderRadius: 2,
+                          whiteSpace: 'pre-wrap',
+                        }}
+                      >
+                        <ListItemText primary={msg.text} />
+                      </Paper>
+                    </ListItem>
                   ))}
-                </Select>
-              </FormControl>
-
-              <TextField
-                fullWidth
-                label="Salary Range"
-                name="salary"
-                value={formData.salary}
-                onChange={handleInputChange}
-                sx={{
-                  mb: 3,
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: '#374151',
-                    borderRadius: 2,
-                    '& fieldset': { borderColor: '#4b5563' }
-                  },
-                  '& .MuiInputLabel-root': { color: '#9ca3af' }
-                }}
-              />
-
-              <TextField
-                fullWidth
-                label="Location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                sx={{
-                  mb: 3,
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: '#374151',
-                    borderRadius: 2,
-                    '& fieldset': { borderColor: '#4b5563' }
-                  },
-                  '& .MuiInputLabel-root': { color: '#9ca3af' }
-                }}
-              />
-
-              <Box sx={{ mb: 3 }}>
+                </List>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
                   fullWidth
-                  label="Add Required Skills"
-                  name="newSkill"
-                  value={formData.newSkill}
-                  onChange={handleInputChange}
+                  placeholder='Enter JSON, e.g., {"jobTitle": "Software Engineer", "company": "Google"}'
+                  value={userPrompt}
+                  onChange={(e) => setUserPrompt(e.target.value)}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       bgcolor: '#374151',
                       borderRadius: 2,
-                      '& fieldset': { borderColor: '#4b5563' }
+                      '& fieldset': { borderColor: '#4b5563' },
                     },
-                    '& .MuiInputLabel-root': { color: '#9ca3af' }
-                  }}
-                  InputProps={{
-                    endAdornment: (
-                      <IconButton onClick={handleAddSkill} sx={{ color: '#8b5cf6' }}>
-                        <PlusIcon className="h-5 w-5" />
-                      </IconButton>
-                    ),
+                    '& .MuiInputLabel-root': { color: '#9ca3af' },
                   }}
                 />
-                <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {formData.skills.map((skill) => (
-                    <Chip
-                      key={skill}
-                      label={skill}
-                      onDelete={() => handleRemoveSkill(skill)}
-                      sx={{
-                        bgcolor: '#4b5563',
-                        color: '#f3f4f6',
-                        '& .MuiChip-deleteIcon': {
-                          color: '#9ca3af',
-                          '&:hover': { color: '#f3f4f6' }
-                        }
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-
-              <Divider sx={{ my: 3, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-
-              <Typography variant="h6" sx={{ mb: 2, color: '#f3f4f6' }}>
-                Interview Process
-              </Typography>
-
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel sx={{ color: '#9ca3af' }}>Interview Rounds</InputLabel>
-                <Select
-                  value={formData.interviewRounds || 1}
-                  onChange={(e) => setFormData({ ...formData, interviewRounds: Number(e.target.value) })}
+                <Button
+                  onClick={handleChatSubmit}
+                  disabled={loadingAI}
                   sx={{
-                    bgcolor: '#374151',
+                    bgcolor: '#8b5cf6',
+                    color: '#ffffff',
+                    px: 4,
+                    py: 1.5,
                     borderRadius: 2,
-                    '& .MuiSelect-select': { color: '#f3f4f6' }
+                    '&:hover': { bgcolor: '#7c3aed' },
                   }}
                 >
-                  {[1, 2, 3, 4, 5].map((round) => (
-                    <MenuItem key={round} value={round}>{round} Round{round > 1 ? 's' : ''}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.codingChallenge || false}
-                    onChange={(e) => setFormData({ ...formData, codingChallenge: e.target.checked })}
-                    sx={{
-                      '& .MuiSwitch-switchBase.Mui-checked': {
-                        color: '#8b5cf6',
-                        '& + .MuiSwitch-track': {
-                          backgroundColor: '#6d28d9'
-                        }
-                      }
-                    }}
-                  />
-                }
-                label="Include Coding Challenge"
-                sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.systemDesign || false}
-                    onChange={(e) => setFormData({ ...formData, systemDesign: e.target.checked })}
-                    sx={{
-                      '& .MuiSwitch-switchBase.Mui-checked': {
-                        color: '#8b5cf6',
-                        '& + .MuiSwitch-track': {
-                          backgroundColor: '#6d28d9'
-                        }
-                      }
-                    }}
-                  />
-                }
-                label="Include System Design Round"
-                sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.pairProgramming || false}
-                    onChange={(e) => setFormData({ ...formData, pairProgramming: e.target.checked })}
-                    sx={{
-                      '& .MuiSwitch-switchBase.Mui-checked': {
-                        color: '#8b5cf6',
-                        '& + .MuiSwitch-track': {
-                          backgroundColor: '#6d28d9'
-                        }
-                      }
-                    }}
-                  />
-                }
-                label="Include Pair Programming Session"
-                sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
-              />
-            </Box>
-          )}
-
-          {activeStep === 3 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" sx={{ mb: 3, color: '#f3f4f6' }}>
-                Invite Candidates
-              </Typography>
-
-              <TextField
-                fullWidth
-                label="Add Candidate Email"
-                name="newCandidate"
-                value={formData.newCandidate}
-                onChange={handleInputChange}
-                sx={{
-                  mb: 3,
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: '#374151',
-                    borderRadius: 2,
-                    '& fieldset': { borderColor: '#4b5563' }
-                  },
-                  '& .MuiInputLabel-root': { color: '#9ca3af' }
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <IconButton onClick={handleAddCandidate} sx={{ color: '#8b5cf6' }}>
-                      <PlusIcon className="h-5 w-5" />
-                    </IconButton>
-                  ),
-                }}
-              />
-
-              <Box sx={{ mb: 3 }}>
-                {formData.candidates.map((candidate) => (
-                  <Chip
-                    key={candidate}
-                    label={candidate}
-                    onDelete={() => handleRemoveCandidate(candidate)}
-                    sx={{
-                      m: 0.5,
-                      bgcolor: '#4b5563',
-                      color: '#f3f4f6',
-                      '& .MuiChip-deleteIcon': {
-                        color: '#9ca3af',
-                        '&:hover': { color: '#f3f4f6' }
-                      }
-                    }}
-                  />
-                ))}
+                  {loadingAI ? <CircularProgress size={20} /> : 'Create Job'}
+                </Button>
               </Box>
-
-              <Typography variant="body2" sx={{ color: '#9ca3af', mb: 2 }}>
-                Candidates will receive an email invitation with:
-              </Typography>
-              <ul style={{ color: '#f3f4f6', paddingLeft: '1.5rem' }}>
-                <li>Job description and requirements</li>
-                <li>Interview scheduling options</li>
-                <li>Technical assessment (if enabled)</li>
-                <li>Application instructions</li>
-              </ul>
             </Box>
+          ) : (
+            <>
+              <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
+                {steps.map((label) => (
+                  <Step key={label}>
+                    <StepLabel
+                      sx={{
+                        '& .MuiStepLabel-label': {
+                          color: '#9ca3af',
+                          '&.Mui-active': { color: '#8b5cf6' },
+                          '&.Mui-completed': { color: '#10b981' },
+                        },
+                        '& .MuiStepIcon-root': {
+                          color: '#4b5563',
+                          '&.Mui-active': { color: '#8b5cf6' },
+                          '&.Mui-completed': { color: '#10b981' },
+                        },
+                      }}
+                    >
+                      {label}
+                    </StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+
+              {successMessage && (
+                <Alert
+                  severity="success"
+                  sx={{ mb: 2 }}
+                  icon={<CheckCircleIcon className="h-5 w-5" />}
+                >
+                  {successMessage}
+                </Alert>
+              )}
+
+              {error && (
+                <Alert
+                  severity="error"
+                  sx={{ mb: 2 }}
+                  icon={<ExclamationCircleIcon className="h-5 w-5" />}
+                >
+                  {error}
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => setError(undefined)}
+                    sx={{ ml: 2 }}
+                  >
+                    Dismiss
+                  </Button>
+                </Alert>
+              )}
+
+              {activeStep === 0 && (
+                <Box sx={{ mt: 4 }}>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <BuildingOfficeIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
+                            <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                              Company & Role
+                            </Typography>
+                          </Box>
+                          <FormControl fullWidth sx={{ mb: 3 }}>
+                            <InputLabel sx={{ color: '#9ca3af' }}>Company *</InputLabel>
+                            <Select
+                              value={selectedCompany}
+                              onChange={handleCompanyChange}
+                              required
+                              sx={{
+                                bgcolor: '#1f2937',
+                                borderRadius: 2,
+                                '& .MuiSelect-select': { color: '#f3f4f6' },
+                              }}
+                            >
+                              {companies.map((company) => (
+                                <MenuItem key={company.name} value={company.name}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Avatar
+                                      sx={{ width: 24, height: 24, mr: 1 }}
+                                      src={`/logos/${company.name.toLowerCase()}.png`}
+                                    >
+                                      {company.name[0]}
+                                    </Avatar>
+                                    {company.name}
+                                  </Box>
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+
+                          <FormControl fullWidth sx={{ mb: 3 }}>
+                            <InputLabel sx={{ color: '#9ca3af' }}>Job Title *</InputLabel>
+                            <Select
+                              value={formData.jobTitle}
+                              onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+                              required
+                              disabled={!selectedCompany}
+                              sx={{
+                                bgcolor: '#1f2937',
+                                borderRadius: 2,
+                                '& .MuiSelect-select': { color: '#f3f4f6' },
+                              }}
+                            >
+                              {availableJobs.map((job) => (
+                                <MenuItem key={job} value={job}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <BriefcaseIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
+                                    {job}
+                                  </Box>
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <CalendarIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
+                            <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                              Timeline & Location
+                            </Typography>
+                          </Box>
+                          <TextField
+                            fullWidth
+                            label="Deadline *"
+                            name="deadline"
+                            type="date"
+                            value={formData.deadline}
+                            onChange={handleInputChange}
+                            required
+                            InputLabelProps={{ shrink: true }}
+                            sx={{
+                              mb: 3,
+                              '& .MuiOutlinedInput-root': {
+                                bgcolor: '#1f2937',
+                                borderRadius: 2,
+                                '& fieldset': { borderColor: '#4b5563' },
+                              },
+                            }}
+                          />
+
+                          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                            <FormControl fullWidth>
+                              <InputLabel sx={{ color: '#9ca3af' }}>Language *</InputLabel>
+                              <Select
+                                name="language"
+                                value={formData.language}
+                                onChange={handleSelectChange}
+                                displayEmpty
+                                sx={{
+                                  bgcolor: '#1f2937',
+                                  borderRadius: 2,
+                                  '& .MuiSelect-select': { color: '#f3f4f6' },
+                                }}
+                              >
+                                {languages.map((lang) => (
+                                  <MenuItem key={lang} value={lang}>{lang}</MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+
+                            <FormControl fullWidth>
+                              <InputLabel sx={{ color: '#9ca3af' }}>Timezone *</InputLabel>
+                              <Select
+                                name="timezone"
+                                value={formData.timezone}
+                                onChange={handleSelectChange}
+                                displayEmpty
+                                sx={{
+                                  bgcolor: '#1f2937',
+                                  borderRadius: 2,
+                                  '& .MuiSelect-select': { color: '#f3f4f6' },
+                                }}
+                              >
+                                {timezones.map((tz) => (
+                                  <MenuItem key={tz} value={tz}>{tz}</MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <DocumentTextIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
+                            <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                              Job Description
+                            </Typography>
+                          </Box>
+                          <TextField
+                            fullWidth
+                            label="Description"
+                            name="description"
+                            value={formData.description}
+                            onChange={handleInputChange}
+                            multiline
+                            rows={6}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                bgcolor: '#1f2937',
+                                borderRadius: 2,
+                                '& fieldset': { borderColor: '#4b5563' },
+                              },
+                            }}
+                          />
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+
+              {activeStep === 1 && (
+                <Box sx={{ mt: 4 }}>
+                  <Card sx={{ bgcolor: '#374151', borderRadius: 2, mb: 3 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <ChatBubbleLeftRightIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
+                        <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                          Question Generation Settings
+                        </Typography>
+                      </Box>
+
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
+                          Question Types
+                        </Typography>
+                        <ToggleButtonGroup
+                          value={selectedQuestionTypes}
+                          onChange={(event: React.MouseEvent<HTMLElement>, newTypes: string[]) => setSelectedQuestionTypes(newTypes)}
+                          aria-label="question types"
+                          sx={{ flexWrap: 'wrap', gap: 1 }}
+                        >
+                          {questionTypes.map((type) => (
+                            <ToggleButton
+                              key={type.value}
+                              value={type.value}
+                              sx={{
+                                color: '#f3f4f6',
+                                borderColor: '#4b5563',
+                                '&.Mui-selected': {
+                                  bgcolor: '#8b5cf6',
+                                  color: '#ffffff',
+                                },
+                              }}
+                            >
+                              <type.icon className="h-5 w-5 mr-2" />
+                              {type.label}
+                            </ToggleButton>
+                          ))}
+                        </ToggleButtonGroup>
+                      </Box>
+
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
+                          Difficulty Level
+                        </Typography>
+                        <ToggleButtonGroup
+                          value={difficultyLevel}
+                          exclusive
+                          onChange={(e, value) => setDifficultyLevel(value)}
+                          aria-label="difficulty level"
+                          sx={{ flexWrap: 'wrap', gap: 1 }}
+                        >
+                          {difficultyLevels.map((level) => (
+                            <ToggleButton
+                              key={level.value}
+                              value={level.value}
+                              sx={{
+                                color: '#f3f4f6',
+                                borderColor: '#4 FocalLength5563',
+                                '&.Mui-selected': {
+                                  bgcolor: level.color,
+                                  color: '#ffffff',
+                                },
+                              }}
+                            >
+                              {level.label}
+                            </ToggleButton>
+                          ))}
+                        </ToggleButtonGroup>
+                      </Box>
+
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
+                          Question Complexity
+                        </Typography>
+                        <Slider
+                          value={questionComplexity}
+                          onChange={(event: Event, newValue: number | number[]) => setQuestionComplexity(newValue as number)}
+                          min={1}
+                          max={5}
+                          step={1}
+                          marks
+                          valueLabelDisplay="auto"
+                          sx={{
+                            color: '#8b5cf6',
+                            '& .MuiSlider-markLabel': { color: '#9ca3af' },
+                          }}
+                        />
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button
+                          startIcon={isGenerating ? <CircularProgress size={20} /> : <SparklesIcon className="h-5 w-5" />}
+                          onClick={async () => {
+                            try {
+                              setError(undefined);
+                              const generated = await generateQuestionsWithGemini(
+                                formData.jobTitle,
+                                selectedQuestionTypes,
+                                difficultyLevel,
+                                questionCount,
+                                questionComplexity
+                              );
+
+                              setQuestions(generated.map(q => q.question));
+                              setFormData({
+                                ...formData,
+                                customQuestions: generated.map(q =>
+                                  `[${q.category}] (${q.difficulty}, Complexity: ${q.complexity}/5)\n${q.question}\n\nKey Points:\n${q.keyPoints.join('\n')}`
+                                ).join('\n\n')
+                              });
+
+                            } catch (err) {
+                              setError('Failed to generate questions. Please try again.');
+                            }
+                          }}
+                          disabled={isGenerating || !formData.jobTitle}
+                          sx={{
+                            bgcolor: '#8b5cf6',
+                            color: '#ffffff',
+                            px: 4,
+                            py: 1.5,
+                            borderRadius: 2,
+                            '&:hover': { bgcolor: '#7c3aed' },
+                          }}
+                        >
+                          {isGenerating ? 'Generating...' : 'Generate Questions'}
+                        </Button>
+
+                        {isGenerating && (
+                          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                            <CircularProgress
+                              variant="determinate"
+                              value={generationProgress}
+                              sx={{ color: '#8b5cf6', mr: 2 }}
+                            />
+                            <Typography variant="body2" sx={{ color: '#9ca3af' }}>
+                              Generating questions... {generationProgress}%
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+
+                  {questions.length > 0 && (
+                    <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          <DocumentTextIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
+                          <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                            Generated Questions
+                          </Typography>
+                        </Box>
+                        <Box>
+                          {questions.map((question, index) => (
+                            <Card
+                              key={index}
+                              sx={{
+                                mb: 2,
+                                bgcolor: '#1f2937',
+                                borderRadius: 2,
+                                '&:hover': { bgcolor: '#2d3748' },
+                              }}
+                            >
+                              <CardContent>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                  <Typography variant="subtitle2" sx={{ color: '#9ca3af' }}>
+                                    Question {index + 1}
+                                  </Typography>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      const newQuestions = questions.filter((_, i) => i !== index);
+                                      setQuestions(newQuestions);
+                                    }}
+                                    sx={{ color: '#9ca3af' }}
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </IconButton>
+                                </Box>
+                                <TextField
+                                  fullWidth
+                                  multiline
+                                  value={question}
+                                  onChange={(e) => {
+                                    const newQuestions = [...questions];
+                                    newQuestions[index] = e.target.value;
+                                    setQuestions(newQuestions);
+                                  }}
+                                  sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                      color: '#f3f4f6',
+                                      '& fieldset': { borderColor: '#4b5563' },
+                                    },
+                                  }}
+                                />
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  )}
+                </Box>
+              )}
+
+              {activeStep === 2 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 3, color: '#f3f4f6' }}>
+                    Job Requirements & Details
+                  </Typography>
+
+                  <FormControl fullWidth sx={{ mb: 3 }}>
+                    <InputLabel sx={{ color: '#9ca3af' }}>Experience Level</InputLabel>
+                    <Select
+                      value={formData.experience}
+                      onChange={handleSelectChange}
+                      name="experience"
+                      sx={{
+                        bgcolor: '#374151',
+                        borderRadius: 2,
+                        '& .MuiSelect-select': { color: '#f3f4f6' },
+                      }}
+                    >
+                      {experienceLevels.map((level) => (
+                        <MenuItem key={level} value={level}>{level}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    fullWidth
+                    label="Salary Range"
+                    name="salary"
+                    value={formData.salary}
+                    onChange={handleInputChange}
+                    sx={{
+                      mb: 3,
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: '#374151',
+                        borderRadius: 2,
+                        '& fieldset': { borderColor: '#4b5563' },
+                      },
+                      '& .MuiInputLabel-root': { color: '#9ca3af' },
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="Location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    sx={{
+                      mb: 3,
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: '#374151',
+                        borderRadius: 2,
+                        '& fieldset': { borderColor: '#4b5563' },
+                      },
+                      '& .MuiInputLabel-root': { color: '#9ca3af' },
+                    }}
+                  />
+
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      fullWidth
+                      label="Add Required Skills"
+                      name="newSkill"
+                      value={formData.newSkill}
+                      onChange={handleInputChange}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: '#374151',
+                          borderRadius: 2,
+                          '& fieldset': { borderColor: '#4b5563' },
+                        },
+                        '& .MuiInputLabel-root': { color: '#9ca3af' },
+                      }}
+                      InputProps={{
+                        endAdornment: (
+                          <IconButton onClick={handleAddSkill} sx={{ color: '#8b5cf6' }}>
+                            <PlusIcon className="h-5 w-5" />
+                          </IconButton>
+                        ),
+                      }}
+                    />
+                    <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {formData.skills.map((skill) => (
+                        <Chip
+                          key={skill}
+                          label={skill}
+                          onDelete={() => handleRemoveSkill(skill)}
+                          sx={{
+                            bgcolor: '#4b5563',
+                            color: '#f3f4f6',
+                            '& .MuiChip-deleteIcon': {
+                              color: '#9ca3af',
+                              '&:hover': { color: '#f3f4f6' },
+                            },
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+
+                  <Divider sx={{ my: 3, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+
+                  <Typography variant="h6" sx={{ mb: 2, color: '#f3f4f6' }}>
+                    Interview Process
+                  </Typography>
+
+                  <FormControl fullWidth sx={{ mb: 3 }}>
+                    <InputLabel sx={{ color: '#9ca3af' }}>Interview Rounds</InputLabel>
+                    <Select
+                      value={formData.interviewRounds || 1}
+                      onChange={(e) => setFormData({ ...formData, interviewRounds: Number(e.target.value) })}
+                      sx={{
+                        bgcolor: '#374151',
+                        borderRadius: 2,
+                        '& .MuiSelect-select': { color: '#f3f4f6' },
+                      }}
+                    >
+                      {[1, 2, 3, 4, 5].map((round) => (
+                        <MenuItem key={round} value={round}>{round} Round{round > 1 ? 's' : ''}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.codingChallenge || false}
+                        onChange={(e) => setFormData({ ...formData, codingChallenge: e.target.checked })}
+                        sx={{
+                          '& .MuiSwitch-switchBase.Mui-checked': {
+                            color: '#8b5cf6',
+                            '& + .MuiSwitch-track': {
+                              backgroundColor: '#6d28d9',
+                            },
+                          },
+                        }}
+                      />
+                    }
+                    label="Include Coding Challenge"
+                    sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
+                  />
+
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.systemDesign || false}
+                        onChange={(e) => setFormData({ ...formData, systemDesign: e.target.checked })}
+                        sx={{
+                          '& .MuiSwitch-switchBase.Mui-checked': {
+                            color: '#8b5cf6',
+                            '& + .MuiSwitch-track': {
+                              backgroundColor: '#6d28d9',
+                            },
+                          },
+                        }}
+                      />
+                    }
+                    label="Include System Design Round"
+                    sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
+                  />
+
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.pairProgramming || false}
+                        onChange={(e) => setFormData({ ...formData, pairProgramming: e.target.checked })}
+                        sx={{
+                          '& .MuiSwitch-switchBase.Mui-checked': {
+                            color: '#8b5cf6',
+                            '& + .MuiSwitch-track': {
+                              backgroundColor: '#6d28d9',
+                            },
+                          },
+                        }}
+                      />
+                    }
+                    label="Include Pair Programming Session"
+                    sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
+                  />
+                </Box>
+              )}
+
+              {activeStep === 3 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 3, color: '#f3f4f6' }}>
+                    Invite Candidates
+                  </Typography>
+
+                  <TextField
+                    fullWidth
+                    label="Add Candidate Email"
+                    name="newCandidate"
+                    value={formData.newCandidate}
+                    onChange={handleInputChange}
+                    sx={{
+                      mb: 3,
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: '#374151',
+                        borderRadius: 2,
+                        '& fieldset': { borderColor: '#4b5563' },
+                      },
+                      '& .MuiInputLabel-root': { color: '#9ca3af' },
+                    }}
+                    InputProps={{
+                      endAdornment: (
+                        <IconButton onClick={handleAddCandidate} sx={{ color: '#8b5cf6' }}>
+                          <PlusIcon className="h-5 w-5" />
+                        </IconButton>
+                      ),
+                    }}
+                  />
+
+                  <Box sx={{ mb: 3 }}>
+                    {formData.candidates.map((candidate) => (
+                      <Chip
+                        key={candidate}
+                        label={candidate}
+                        onDelete={() => handleRemoveCandidate(candidate)}
+                        sx={{
+                          m: 0.5,
+                          bgcolor: '#4b5563',
+                          color: '#f3f4f6',
+                          '& .MuiChip-deleteIcon': {
+                            color: '#9ca3af',
+                            '&:hover': { color: '#f3f4f6' },
+                          },
+                        }}
+                      />
+                    ))}
+                  </Box>
+
+                  <Typography variant="body2" sx={{ color: '#9ca3af', mb: 2 }}>
+                    Candidates will receive an email invitation with:
+                  </Typography>
+                  <ul style={{ color: '#f3f4f6', paddingLeft: '1.5rem' }}>
+                    <li>Job description and requirements</li>
+                    <li>Interview scheduling options</li>
+                    <li>Technical assessment (if enabled)</li>
+                    <li>Application instructions</li>
+                  </ul>
+                </Box>
+              )}
+            </>
           )}
         </Box>
 
-        <Box sx={{ 
-          p: 3, 
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex', 
-          justifyContent: 'space-between'
-        }}>
-          <Button
-            onClick={handleBack}
-            disabled={activeStep === 0}
-            startIcon={<ArrowLeftIcon className="h-5 w-5" />}
-            sx={{
-              color: '#9ca3af',
-              '&:hover': { color: '#f3f4f6' }
-            }}
-          >
-            Back
-          </Button>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {activeStep === steps.length - 1 && (
-              <Button
-                onClick={handlePreview}
-                startIcon={<EyeIcon className="h-5 w-5" />}
-                sx={{
-                  bgcolor: '#4b5563',
-                  color: '#ffffff',
-                  '&:hover': { bgcolor: '#374151' }
-                }}
-              >
-                Preview
-              </Button>
-            )}
+        {!useAI && (
+          <Box sx={{
+            p: 3,
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+          }}>
             <Button
-              onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
-              endIcon={activeStep === steps.length - 1 ? null : <ArrowRightIcon className="h-5 w-5" />}
+              onClick={handleBack}
+              disabled={activeStep === 0}
+              startIcon={<ArrowLeftIcon className="h-5 w-5" />}
               sx={{
-                bgcolor: '#8b5cf6',
-                color: '#ffffff',
-                px: 4,
-                '&:hover': { bgcolor: '#7c3aed' }
+                color: '#9ca3af',
+                '&:hover': { color: '#f3f4f6' },
               }}
-              disabled={isLoading}
             >
-              {isLoading ? 'Creating...' : activeStep === steps.length - 1 ? 'Create Job' : 'Next'}
+              Back
             </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {activeStep === steps.length - 1 && (
+                <Button
+                  onClick={() => {
+                    setPreviewData({
+                      jobTitle: formData.jobTitle,
+                      company: selectedCompany,
+                      description: formData.description,
+                      requirements: formData.skills,
+                      questions: questions,
+                      interviewProcess: {
+                        rounds: formData.interviewRounds,
+                        codingChallenge: formData.codingChallenge,
+                        systemDesign: formData.systemDesign,
+                        pairProgramming: formData.pairProgramming,
+                      },
+                    });
+                    setShowPreview(true);
+                  }}
+                  startIcon={<EyeIcon className="h-5 w-5" />}
+                  sx={{
+                    bgcolor: '#4b5563',
+                    color: '#ffffff',
+                    '&:hover': { bgcolor: '#374151' },
+                  }}
+                >
+                  Preview
+                </Button>
+              )}
+              <Button
+                onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
+                endIcon={activeStep === steps.length - 1 ? null : <ArrowRightIcon className="h-5 w-5" />}
+                sx={{
+                  bgcolor: '#8b5cf6',
+                  color: '#ffffff',
+                  px: 4,
+                  '&:hover': { bgcolor: '#7c3aed' },
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Creating...' : activeStep === steps.length - 1 ? 'Create Job' : 'Next'}
+              </Button>
+            </Box>
           </Box>
-        </Box>
+        )}
       </Box>
     </Modal>
   );
