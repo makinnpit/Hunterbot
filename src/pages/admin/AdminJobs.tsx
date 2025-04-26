@@ -20,7 +20,7 @@ import { TextField, Button, Dialog, DialogActions, DialogContent, DialogTitle, M
 interface Job {
   id: string;
   title: string;
-  department: string;
+  company: string; // Changed from department to company to match CreateJobModal
   location: string;
   type: string;
   salary: string;
@@ -31,7 +31,6 @@ interface Job {
   description: string;
   requirements: string[];
   skills: string[];
-  company?: string;
 }
 
 const AdminJobs: React.FC = () => {
@@ -45,8 +44,7 @@ const AdminJobs: React.FC = () => {
   const [deleteJobId, setDeleteJobId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const departments = ['Engineering', 'Design', 'Marketing', 'Sales'];
-  const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote', 'On-site'];
+  const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Internship'];
   const locations = ['Remote', 'On-site', 'Hybrid'];
 
   useEffect(() => {
@@ -65,19 +63,18 @@ const AdminJobs: React.FC = () => {
           const data = doc.data();
           return {
             id: doc.id,
-            title: data.jobTitle || 'Untitled Job',
-            department: data.company || 'Unknown Department',
+            title: data.job_title || 'Untitled Job', // Fixed to use job_title
+            company: data.company || 'Unknown', // Use company instead of department
             location: data.location || 'Not specified',
             type: data.remote ? 'Remote' : 'On-site',
             salary: data.salary || 'Not specified',
-            posted: data.createdAt?.toDate().toISOString().split('T')[0] || 'Unknown',
+            posted: data.created_at?.toDate().toISOString().split('T')[0] || 'Unknown',
             expires: data.deadline || 'Unknown',
             status: data.status || 'active',
             applicants: data.candidates?.length || 0,
             description: data.description || 'No description available',
             requirements: data.skills || [],
             skills: data.skills || [],
-            company: data.company || 'Unknown',
           };
         });
 
@@ -102,15 +99,15 @@ const AdminJobs: React.FC = () => {
 
   const filteredJobs = jobs.filter((job) =>
     job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    job.department.toLowerCase().includes(searchQuery.toLowerCase())
+    job.company.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleEditJob = async (updatedJob: Job) => {
     try {
       const jobRef = doc(db, 'createjobs', updatedJob.id);
       await updateDoc(jobRef, {
-        jobTitle: updatedJob.title,
-        company: updatedJob.department,
+        job_title: updatedJob.title, // Fixed to use job_title
+        company: updatedJob.company,
         location: updatedJob.location,
         remote: updatedJob.type === 'Remote',
         salary: updatedJob.salary,
@@ -190,7 +187,7 @@ const AdminJobs: React.FC = () => {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
+              <h1 className="text-3xl sm:text-4xl font-bold text-white bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
                 Jobs
               </h1>
               <p className="text-gray-400 mt-1">
@@ -291,7 +288,7 @@ const AdminJobs: React.FC = () => {
                             {job.title}
                           </h3>
                           <p className="text-gray-400 text-sm">
-                            {job.department} • {job.location} • {job.type}
+                            {job.company} • {job.location} • {job.type}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -375,18 +372,16 @@ const AdminJobs: React.FC = () => {
               InputProps={{ style: { color: 'white', borderColor: 'gray.600' } }}
               sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'gray.600' } } }}
             />
-            <FormControl fullWidth margin="normal">
-              <InputLabel sx={{ color: 'gray.400' }}>Department</InputLabel>
-              <Select
-                value={editJob.department}
-                onChange={(e) => setEditJob({ ...editJob, department: e.target.value })}
-                sx={{ color: 'white', '& .MuiOutlinedInput-notchedOutline': { borderColor: 'gray.600' } }}
-              >
-                {departments.map((dept) => (
-                  <MenuItem key={dept} value={dept}>{dept}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <TextField
+              label="Company"
+              value={editJob.company}
+              onChange={(e) => setEditJob({ ...editJob, company: e.target.value })}
+              fullWidth
+              margin="normal"
+              InputLabelProps={{ style: { color: 'gray.400' } }}
+              InputProps={{ style: { color: 'white', borderColor: 'gray.600' } }}
+              sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'gray.600' } } }}
+            />
             <FormControl fullWidth margin="normal">
               <InputLabel sx={{ color: 'gray.400' }}>Location</InputLabel>
               <Select

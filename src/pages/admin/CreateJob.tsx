@@ -32,6 +32,7 @@ import {
   ListItem,
   ListItemText,
   Paper,
+  Checkbox,
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -60,7 +61,6 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp, getDocs, doc, getDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 
@@ -110,6 +110,8 @@ interface FormData {
   systemDesign: boolean;
   pairProgramming: boolean;
   company: string;
+  postToLinkedIn: boolean; // New field for LinkedIn posting preference
+  postToIndeed: boolean;   // New field for Indeed posting preference
 }
 
 interface ChatMessage {
@@ -137,23 +139,91 @@ const companies: Company[] = [
   },
   {
     name: 'Google',
-    jobs: ['Software Engineer', 'Software Developer', 'Product Manager', 'Data Scientist', 'UX Designer', 'DevOps Engineer'],
+    jobs: ['Software Engineer', 'Product Manager', 'Data Scientist', 'UX Designer', 'DevOps Engineer', 'Cloud Architect'],
   },
   {
     name: 'Microsoft',
-    jobs: ['Software Developer', 'Cloud Architect', 'ML Engineer', 'Program Manager', 'Full Stack Developer'],
+    jobs: ['Software Developer', 'Cloud Engineer', 'Machine Learning Engineer', 'Program Manager', 'Full Stack Developer'],
   },
   {
     name: 'Amazon',
-    jobs: ['SDE', 'Solutions Architect', 'Technical Program Manager', 'Research Scientist', 'Frontend Engineer'],
+    jobs: ['Software Development Engineer', 'Solutions Architect', 'Technical Program Manager', 'Data Engineer', 'Frontend Engineer'],
   },
   {
     name: 'Meta',
-    jobs: ['Software Engineer', 'Product Designer', 'Data Engineer', 'Research Engineer', 'Security Engineer'],
+    jobs: ['Software Engineer', 'Product Designer', 'Data Scientist', 'Security Engineer', 'AR/VR Developer'],
   },
   {
     name: 'Apple',
-    jobs: ['iOS Developer', 'Machine Learning Engineer', 'Systems Engineer', 'Software Architect', 'QA Engineer'],
+    jobs: ['iOS Developer', 'Machine Learning Engineer', 'Systems Engineer', 'Hardware Engineer', 'QA Engineer'],
+  },
+  {
+    name: 'Tencent',
+    jobs: ['Game Developer', 'AI Researcher', 'Backend Engineer', 'Product Manager', 'UI/UX Designer'],
+  },
+  {
+    name: 'Alibaba',
+    jobs: ['Cloud Engineer', 'E-commerce Specialist', 'Data Analyst', 'Software Engineer', 'Logistics Manager'],
+  },
+  {
+    name: 'Samsung',
+    jobs: ['Hardware Engineer', 'Mobile Software Developer', 'AI Engineer', 'Product Manager', 'Quality Assurance Engineer'],
+  },
+  {
+    name: 'Toyota',
+    jobs: ['Automotive Engineer', 'Software Developer', 'Data Analyst', 'Supply Chain Manager', 'Robotics Engineer'],
+  },
+  {
+    name: 'Siemens',
+    jobs: ['Industrial Engineer', 'Software Developer', 'Automation Engineer', 'Project Manager', 'Cybersecurity Specialist'],
+  },
+  {
+    name: 'HSBC',
+    jobs: ['Financial Analyst', 'Risk Manager', 'Data Scientist', 'Software Engineer', 'Compliance Officer'],
+  },
+  {
+    name: 'Reliance Industries',
+    jobs: ['Petroleum Engineer', 'Data Scientist', 'Software Developer', 'Retail Manager', 'Supply Chain Analyst'],
+  },
+  {
+    name: 'Shopify',
+    jobs: ['Frontend Developer', 'Backend Developer', 'Product Manager', 'UX Designer', 'Data Engineer'],
+  },
+  {
+    name: 'NVIDIA',
+    jobs: ['AI Engineer', 'GPU Software Developer', 'Systems Engineer', 'Data Scientist', 'Product Manager'],
+  },
+  {
+    name: 'SAP',
+    jobs: ['ERP Consultant', 'Software Developer', 'Cloud Architect', 'Data Analyst', 'Solution Architect'],
+  },
+  {
+    name: 'Naspers',
+    jobs: ['Software Engineer', 'Product Manager', 'Data Analyst', 'Digital Marketing Specialist', 'E-commerce Manager'],
+  },
+  {
+    name: 'Atlassian',
+    jobs: ['Software Engineer', 'Product Manager', 'DevOps Engineer', 'Technical Writer', 'UX Designer'],
+  },
+  {
+    name: 'Novartis',
+    jobs: ['Biomedical Engineer', 'Data Scientist', 'Clinical Research Manager', 'Regulatory Affairs Specialist', 'Software Developer'],
+  },
+  {
+    name: 'Qantas',
+    jobs: ['Aviation Engineer', 'Data Analyst', 'Software Developer', 'Customer Experience Manager', 'Operations Manager'],
+  },
+  {
+    name: 'Accenture',
+    jobs: ['Management Consultant', 'Software Engineer', 'Cloud Architect', 'Data Analyst', 'Cybersecurity Consultant', 'Digital Transformation Specialist'],
+  },
+  {
+    name: 'Alliance',
+    jobs: ['Actuarial Analyst', 'Risk Manager', 'Insurance Underwriter', 'Data Scientist', 'Software Developer', 'Claims Manager'],
+  },
+  {
+    name: 'Lear',
+    jobs: ['Automotive Engineer', 'Manufacturing Engineer', 'Supply Chain Manager', 'Quality Assurance Engineer', 'Embedded Software Developer'],
   },
 ];
 
@@ -196,6 +266,8 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ open, onClose }): JSX.E
     systemDesign: false,
     pairProgramming: false,
     company: '',
+    postToLinkedIn: false, // Initialize new fields
+    postToIndeed: false,
   });
   const [error, setError] = useState<string | undefined>(undefined);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -223,6 +295,12 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ open, onClose }): JSX.E
   ]);
   const [userPrompt, setUserPrompt] = useState('');
   const [awaitingClarification, setAwaitingClarification] = useState<'jobTitle' | 'company' | null>(null);
+
+  // Mock user accounts (same as in AdminJobs for consistency)
+  const userAccounts = {
+    linkedIn: { username: 'john.doe@company.com' },
+    indeed: { username: 'company.indeed@account.com' },
+  };
 
   const languages = ['English', 'Spanish', 'French', 'German'];
   const timezones = ['UTC', 'EST', 'PST', 'CET'];
@@ -442,7 +520,6 @@ Requirements:
       'frontend engineer': 'Frontend Engineer',
     };
 
-    // Step 1: Look for company names in the prompt
     for (const companyName of companyNames) {
       if (promptLower.includes(companyName)) {
         company = companies.find(c => c.name.toLowerCase() === companyName)?.name || null;
@@ -450,7 +527,6 @@ Requirements:
       }
     }
 
-    // Step 2: Look for job titles in the prompt, considering synonyms
     for (const job of allJobs) {
       if (promptLower.includes(job)) {
         jobTitle = companies.flatMap(c => c.jobs).find(j => j.toLowerCase() === job) || null;
@@ -458,7 +534,6 @@ Requirements:
       }
     }
 
-    // Step 3: Check for synonyms if no direct job title match
     if (!jobTitle) {
       for (const [synonym, actualJob] of Object.entries(jobSynonyms)) {
         if (promptLower.includes(synonym)) {
@@ -468,7 +543,6 @@ Requirements:
       }
     }
 
-    // Step 4: If company is found but job title isn't, try to extract job title using prepositions
     if (company && !jobTitle) {
       const companyIndex = promptLower.indexOf(company.toLowerCase());
       const beforeCompany = promptLower.substring(0, companyIndex).trim();
@@ -501,7 +575,6 @@ Requirements:
       }
     }
 
-    // Step 5: If job title is found but company isn't, try to extract company
     if (jobTitle && !company) {
       const jobIndex = promptLower.indexOf(jobTitle.toLowerCase());
       const beforeJob = promptLower.substring(0, jobIndex).trim();
@@ -532,7 +605,6 @@ Requirements:
     setChatMessages((prev) => [...prev, { sender: 'Bot', text: `Creating job posting for ${jobTitle} at ${company}...` }]);
 
     try {
-      // Step 1: Validate company and job title
       const jobs = companies.find(c => c.name === company)?.jobs || [];
       if (!jobs.includes(jobTitle)) {
         throw new Error(`Job title "${jobTitle}" is not available for ${company}. Available jobs: ${jobs.join(', ')}`);
@@ -540,7 +612,6 @@ Requirements:
       setSelectedCompany(company);
       setAvailableJobs(jobs);
 
-      // Step 2: Generate job description and skills
       setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Generating job description and requirements...' }]);
       let description = `We are looking for a ${jobTitle} to join ${company}. The ideal candidate will contribute to our mission of innovation and excellence.`;
       let skills = ['Teamwork', 'Communication', 'Problem-solving'];
@@ -550,7 +621,6 @@ Requirements:
         description = generatedDetails.description;
         skills = generatedDetails.skills;
 
-        // Validate generated description
         if (!description.toLowerCase().includes(jobTitle.toLowerCase()) || !description.toLowerCase().includes(company.toLowerCase())) {
           throw new Error('Generated description does not match the job title or company.');
         }
@@ -558,7 +628,6 @@ Requirements:
         setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Failed to generate description and skills. Using defaults.' }]);
       }
 
-      // Step 3: Set tailored default values based on job title and company
       const isSeniorRole = jobTitle.toLowerCase().includes('senior') || jobTitle.toLowerCase().includes('lead');
       const isTechGiant = ['Google', 'Microsoft', 'Amazon', 'Meta', 'Apple'].includes(company);
       const salaryRange = isSeniorRole ? (isTechGiant ? '$150,000 - $200,000' : '$100,000 - $150,000') : (isTechGiant ? '$100,000 - $150,000' : '$80,000 - $120,000');
@@ -568,7 +637,7 @@ Requirements:
       const defaultFormData: FormData = {
         jobTitle,
         company,
-        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         language: 'English',
         timezone: 'UTC',
         description,
@@ -586,11 +655,12 @@ Requirements:
         codingChallenge: false,
         systemDesign: false,
         pairProgramming: false,
+        postToLinkedIn: false, // Default to false
+        postToIndeed: false,
       };
 
       setFormData(defaultFormData);
 
-      // Step 4: Generate questions
       setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Generating interview questions...' }]);
       const generatedQuestions = await generateQuestionsWithGemini(
         jobTitle,
@@ -615,7 +685,6 @@ Requirements:
         customQuestions: formattedQuestions,
       }));
 
-      // Step 5: Save to Firestore "createjobs" collection
       setChatMessages((prev) => [...prev, { sender: 'Bot', text: 'Saving job to database...' }]);
       const jobData = {
         job_title: jobTitle,
@@ -647,7 +716,13 @@ Requirements:
       setChatMessages((prev) => [...prev, { sender: 'Bot', text: `Job created successfully! Job ID: ${jobId}` }]);
       setTimeout(() => {
         onClose();
-        navigate('/admin/jobs');
+        // Redirect with newJobId and posting preferences
+        const params = new URLSearchParams({
+          newJobId: jobId,
+          postToLinkedIn: formData.postToLinkedIn.toString(),
+          postToIndeed: formData.postToIndeed.toString(),
+        });
+        navigate(`/admin/jobs?${params.toString()}`);
       }, 2000);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create job. Please try again.';
@@ -895,10 +970,16 @@ Requirements:
       const docRef = await addDoc(collection(db, 'createjobs'), jobData);
       const jobId = docRef.id;
 
-      setSuccessMessage('Job created successfully!');
+      setSuccessMessage('Job财富created successfully!');
       setTimeout(() => {
         onClose();
-        navigate('/admin/jobs');
+        // Redirect with newJobId and posting preferences
+        const params = new URLSearchParams({
+          newJobId: jobId,
+          postToLinkedIn: formData.postToLinkedIn.toString(),
+          postToIndeed: formData.postToIndeed.toString(),
+        });
+        navigate(`/admin/jobs?${params.toString()}`);
       }, 2000);
     } catch (error) {
       setError('Failed to create job. Please try again.');
@@ -1794,87 +1875,230 @@ Requirements:
                     ))}
                   </Box>
 
-                  <Typography variant="body2" sx={{ color: '#9ca3af', mb: 2 }}>
-                    Candidates will receive an email invitation with:
-                  </Typography>
-                  <ul style={{ color: '#f3f4f6', paddingLeft: '1.5rem' }}>
-                    <li>Job description and requirements</li>
-                    <li>Interview scheduling options</li>
-                    <li>Technical assessment (if enabled)</li>
-                    <li>Application instructions</li>
-                  </ul>
-                </Box>
-              )}
-            </>
-          )}
-        </Box>
+                  <Typography variant="body2" sx={{ color: '#9ca3af',
+                  mb: 2 }}>
+                  Candidates will receive an email invitation with:
+                </Typography>
+                <ul style={{ color: '#f3f4f6', paddingLeft: '1.5rem' }}>
+                  <li>Job description and requirements</li>
+                  <li>Interview scheduling options</li>
+                  <li>Technical assessment (if enabled)</li>
+                  <li>Application instructions</li>
+                </ul>
 
-        {!useAI && (
-          <Box sx={{
-            p: 3,
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'flex',
-            justifyContent: 'space-between',
-          }}>
-            <Button
-              onClick={handleBack}
-              disabled={activeStep === 0}
-              startIcon={<ArrowLeftIcon className="h-5 w-5" />}
-              sx={{
-                color: '#9ca3af',
-                '&:hover': { color: '#f3f4f6' },
-              }}
-            >
-              Back
-            </Button>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              {activeStep === steps.length - 1 && (
-                <Button
-                  onClick={() => {
-                    setPreviewData({
-                      jobTitle: formData.jobTitle,
-                      company: selectedCompany,
-                      description: formData.description,
-                      requirements: formData.skills,
-                      questions: questions,
-                      interviewProcess: {
-                        rounds: formData.interviewRounds,
-                        codingChallenge: formData.codingChallenge,
-                        systemDesign: formData.systemDesign,
-                        pairProgramming: formData.pairProgramming,
-                      },
-                    });
-                    setShowPreview(true);
-                  }}
-                  startIcon={<EyeIcon className="h-5 w-5" />}
-                  sx={{
-                    bgcolor: '#4b5563',
-                    color: '#ffffff',
-                    '&:hover': { bgcolor: '#374151' },
-                  }}
-                >
-                  Preview
-                </Button>
-              )}
-              <Button
-                onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
-                endIcon={activeStep === steps.length - 1 ? null : <ArrowRightIcon className="h-5 w-5" />}
-                sx={{
-                  bgcolor: '#8b5cf6',
-                  color: '#ffffff',
-                  px: 4,
-                  '&:hover': { bgcolor: '#7c3aed' },
-                }}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Creating...' : activeStep === steps.length - 1 ? 'Create Job' : 'Next'}
-              </Button>
-            </Box>
-          </Box>
+                <Divider sx={{ my: 3, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+
+                <Typography variant="h6" sx={{ mb: 2, color: '#f3f4f6' }}>
+                  Post Job to Job Boards
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#9ca3af', mb: 2 }}>
+                  Share this job posting on external platforms to reach more candidates. You can modify this later if needed.
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.postToLinkedIn}
+                        onChange={(e) => setFormData({ ...formData, postToLinkedIn: e.target.checked })}
+                        sx={{
+                          color: '#4b5563',
+                          '&.Mui-checked': { color: '#8b5cf6' },
+                        }}
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Typography sx={{ color: '#f3f4f6', mr: 1 }}>
+                          Post to LinkedIn
+                        </Typography>
+                        {userAccounts.linkedIn?.username && (
+                          <Typography variant="body2" sx={{ color: '#9ca3af' }}>
+                            (Logged in as {userAccounts.linkedIn.username})
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    sx={{ color: '#f3f4f6' }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.postToIndeed}
+                        onChange={(e) => setFormData({ ...formData, postToIndeed: e.target.checked })}
+                        sx={{
+                          color: '#4b5563',
+                          '&.Mui-checked': { color: '#8b5cf6' },
+                        }}
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Typography sx={{ color: '#f3f4f6', mr: 1 }}>
+                          Post to Indeed
+                        </Typography>
+                        {userAccounts.indeed?.username && (
+                          <Typography variant="body2" sx={{ color: '#9ca3af' }}>
+                            (Logged in as {userAccounts.indeed.username})
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    sx={{ color: '#f3f4f6' }}
+                  />
+                </Box>
+              </Box>
+            )}
+          </>
         )}
       </Box>
-    </Modal>
-  );
+
+      {!useAI && (
+        <Box sx={{
+          p: 3,
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          justifyContent: 'space-between',
+        }}>
+          <Button
+            onClick={handleBack}
+            disabled={activeStep === 0}
+            startIcon={<ArrowLeftIcon className="h-5 w-5" />}
+            sx={{
+              color: '#9ca3af',
+              '&:hover': { color: '#f3f4f6' },
+            }}
+          >
+            Back
+          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {activeStep === steps.length - 1 && (
+              <Button
+                onClick={() => {
+                  setPreviewData({
+                    jobTitle: formData.jobTitle,
+                    company: selectedCompany,
+                    description: formData.description,
+                    requirements: formData.skills,
+                    questions: questions,
+                    interviewProcess: {
+                      rounds: formData.interviewRounds,
+                      codingChallenge: formData.codingChallenge,
+                      systemDesign: formData.systemDesign,
+                      pairProgramming: formData.pairProgramming,
+                    },
+                  });
+                  setShowPreview(true);
+                }}
+                startIcon={<EyeIcon className="h-5 w-5" />}
+                sx={{
+                  bgcolor: '#4b5563',
+                  color: '#ffffff',
+                  '&:hover': { bgcolor: '#374151' },
+                }}
+              >
+                Preview
+              </Button>
+            )}
+            <Button
+              onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
+              endIcon={activeStep === steps.length - 1 ? null : <ArrowRightIcon className="h-5 w-5" />}
+              sx={{
+                bgcolor: '#8b5cf6',
+                color: '#ffffff',
+                px: 4,
+                '&:hover': { bgcolor: '#7c3aed' },
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Creating...' : activeStep === steps.length - 1 ? 'Create Job' : 'Next'}
+            </Button>
+          </Box>
+        </Box>
+      )}
+
+      {/* Preview Modal */}
+      <Modal
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Box
+          sx={{
+            width: '80%',
+            maxWidth: 800,
+            maxHeight: '80vh',
+            bgcolor: '#1f2937',
+            borderRadius: 2,
+            p: 3,
+            overflowY: 'auto',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+            <Typography variant="h5" sx={{ color: '#f3f4f6' }}>
+              Job Posting Preview
+            </Typography>
+            <IconButton onClick={() => setShowPreview(false)} sx={{ color: '#9ca3af' }}>
+              <XMarkIcon className="h-6 w-6" />
+            </IconButton>
+          </Box>
+          {previewData && (
+            <Box sx={{ color: '#f3f4f6' }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                {previewData.jobTitle} at {previewData.company}
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                {previewData.description}
+              </Typography>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Requirements
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                {previewData.requirements.map((req: string, index: number) => (
+                  <Chip
+                    key={index}
+                    label={req}
+                    sx={{
+                      m: 0.5,
+                      bgcolor: '#4b5563',
+                      color: '#f3f4f6',
+                    }}
+                  />
+                ))}
+              </Box>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Interview Questions
+              </Typography>
+              {previewData.questions.map((question: string, index: number) => (
+                <Typography key={index} variant="body2" sx={{ mb: 1 }}>
+                  {index + 1}. {question}
+                </Typography>
+              ))}
+              <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                Interview Process
+              </Typography>
+              <Typography variant="body2">
+                Rounds: {previewData.interviewProcess.rounds}
+              </Typography>
+              <Typography variant="body2">
+                Coding Challenge: {previewData.interviewProcess.codingChallenge ? 'Yes' : 'No'}
+              </Typography>
+              <Typography variant="body2">
+                System Design: {previewData.interviewProcess.systemDesign ? 'Yes' : 'No'}
+              </Typography>
+              <Typography variant="body2">
+                Pair Programming: {previewData.interviewProcess.pairProgramming ? 'Yes' : 'No'}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </Modal>
+    </Box>
+  </Modal>
+);
 };
 
 export default CreateJobModal;

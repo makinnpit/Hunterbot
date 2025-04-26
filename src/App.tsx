@@ -13,6 +13,7 @@ import CandidatesList from './pages/admin/CandidatesList';
 import CreateJob from './pages/admin/CreateJob';
 import AdminJobs from './pages/admin/AdminJobs';
 import Settings from './pages/admin/Settings';
+import Reports from './pages/admin/Reports';
 
 // Types
 interface InterviewResultsWrapperProps {
@@ -70,6 +71,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/admin/home" element={<AdminHome />} />
           <Route path="/admin/jobs" element={<AdminJobs />} />
           <Route path="/admin/create-job" element={<CreateJobWrapper />} />
+          <Route path="/admin/reports" element={<Reports />} />
           <Route
             path="/admin/candidates"
             element={<CandidatesList onSelectCandidate={(id) => navigate(`/admin/interview/${id}`)} />}

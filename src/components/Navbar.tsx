@@ -170,12 +170,6 @@ const Navbar: React.FC<NavbarProps> = ({
                   >
                     Settings
                   </button>
-                  <button
-                    onClick={() => navigate('/login')}
-                    className={`block w-full text-left px-4 py-2 ${theme === 'dark' ? 'hover:bg-gray-700 text-white' : 'hover:bg-gray-200 text-gray-900'} transition-colors`}
-                  >
-                    Logout
-                  </button>
                 </motion.div>
               )}
             </div>

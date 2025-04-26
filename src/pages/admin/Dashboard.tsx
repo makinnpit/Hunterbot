@@ -51,6 +51,8 @@ interface Job {
   status: string;
   posted: string;
   screeningProgress?: number;
+  job_title?: string;
+  company?: string;
 }
 
 interface Interview {
@@ -354,12 +356,14 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
           const data = doc.data();
           return {
             id: doc.id,
-            title: data.jobTitle || 'Untitled Job',
+            title: data.job_title || 'Untitled Job', // Using job_title from Firestore
             department: data.company || 'Unknown Department',
             applicants: data.candidates?.length || 0,
             status: data.status || 'active',
             posted: data.createdAt?.toDate().toISOString().split('T')[0] || 'Unknown',
             screeningProgress: Math.floor(Math.random() * 100),
+            job_title: data.job_title,
+            company: data.company,
           };
         });
 
@@ -957,23 +961,31 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
             </div>
           </div>
 
-          {/* Interactive Tabs */}
+          {/* Interactive Tabs - Moved to top of page */}
           <div className="mb-6">
             <div className="border-b border-gray-200 dark:border-gray-700">
               <nav className="-mb-px flex space-x-6">
-                {['overview', 'analytics', 'candidates', 'interviews'].map((tab) => (
+                {[
+                  { id: 'overview', label: 'Overview', path: '/admin/dashboard' },
+                  { id: 'analytics', label: 'Analytics', path: '/admin/analytics' },
+                  { id: 'candidates', label: 'Candidates', path: '/admin/candidates' },
+                  { id: 'interviews', label: 'Interviews', path: '/admin/schedule' }
+                ].map((tab) => (
                   <motion.button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      navigate(tab.path);
+                    }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`${
-                      activeTab === tab
+                      activeTab === tab.id
                         ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                         : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                     } whitespace-nowrap py-3 px-2 border-b-2 font-medium text-sm capitalize transition-colors`}
                   >
-                    {tab}
+                    {tab.label}
                   </motion.button>
                 ))}
               </nav>
@@ -1257,7 +1269,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
 
             {/* Right Column */}
             <div className="space-y-6">
-              {/* Key Metrics (Moved to Right Column) */}
+              {/* Key Metrics */}
               <motion.div
                 variants={cardVariants}
                 className={`p-6 rounded-xl ${
@@ -1396,7 +1408,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                 </div>
               </motion.div>
 
-              {/* Top Job Performers Widget */}
+              {/* Top Job Performers */}
               <motion.div
                 variants={cardVariants}
                 className={`p-6 rounded-xl ${
@@ -1415,10 +1427,6 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                       </div>
                     ))}
                   </div>
-                ) : topJobs.length === 0 ? (
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    No jobs available to display.
-                  </p>
                 ) : (
                   <div className="space-y-4">
                     {topJobs.map((job, index) => (
@@ -1440,9 +1448,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                             </div>
                           </div>
                           <div className="mt-2">
-                            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                              Screening Progress
-                            </p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Screening Progress</p>
                             <div className="w-full bg-gray-300 rounded-full h-2 mt-1">
                               <div
                                 className="bg-blue-400 h-2 rounded-full progress-bar"
@@ -1468,7 +1474,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                 )}
               </motion.div>
 
-              {/* Quick Insights Widget */}
+              {/* Quick Insights */}
               <motion.div
                 variants={cardVariants}
                 className={`p-6 rounded-xl ${
@@ -1505,6 +1511,33 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                 )}
               </motion.div>
             </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="space-y-6">
+            {activeTab === 'overview' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Overview content */}
+              </div>
+            )}
+            
+            {activeTab === 'analytics' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Analytics content */}
+              </div>
+            )}
+            
+            {activeTab === 'candidates' && (
+              <div className="space-y-4">
+                {/* Candidates content */}
+              </div>
+            )}
+            
+            {activeTab === 'interviews' && (
+              <div className="space-y-4">
+                {/* Interviews content */}
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
