@@ -3,11 +3,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigat
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider } from './contexts/AuthContext';
-import theme from './styles/theme';
+import { theme } from './styles/theme';
 
 // Pages
 import ApplicationForm from './pages/JobApplicationForm';
-import ApplicantOnBoarding from './pages/applicant/ApplicantOnboarding';
+import ApplicantOnBoarding from './pages/onboarding/EnhancedOnboarding';
+import EnhancedOnboarding from './pages/onboarding/EnhancedOnboarding';
 import AdminHome from './pages/admin/Dashboard';
 import CandidatesList from './pages/admin/CandidatesList';
 import CreateJob from './pages/admin/CreateJob';
@@ -62,6 +63,7 @@ const AppRoutes: React.FC = () => {
           {/* Public Routes */}
 
           <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/onboarding" element={<EnhancedOnboarding />} />
 
           {/* Applicant Routes */}
           <Route path="/applicant/apply/:jobId" element={<ApplicationForm />} />

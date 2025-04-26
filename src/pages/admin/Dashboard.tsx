@@ -22,6 +22,7 @@ import {
   DocumentArrowDownIcon,
   EyeIcon,
   ArrowTrendingUpIcon,
+  ChatBubbleBottomCenterTextIcon,
 } from '@heroicons/react/24/outline';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
@@ -34,6 +35,10 @@ import { debounce } from 'lodash';
 import { TypeAnimation } from 'react-type-animation';
 import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
+import OverviewTab from '../../components/dashboard/OverviewTab';
+import AnalyticsTab from '../../components/dashboard/AnalyticsTab';
+import CandidatesTab from '../../components/dashboard/CandidatesTab';
+import InterviewsTab from '../../components/dashboard/InterviewsTab';
 
 
 // Register Chart.js components
@@ -160,6 +165,9 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const chartRef = useRef<HTMLDivElement>(null);
 
+  // Add state for chat modal visibility
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
   const stageChartData = {
     labels: ['Applied', 'Interviewed', 'Shortlisted', 'Hired'],
     datasets: [
@@ -200,10 +208,10 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
   });
 
   const trends = {
-    activeJobs: { change: 10, direction: 'up' },
-    totalCandidates: { change: -5, direction: 'down' },
-    timeToHire: { change: 3, direction: 'down' },
-    interviewConversionRate: { change: 2, direction: 'up' },
+    activeJobs: { change: 10, direction: 'up' as 'up' | 'down' },
+    totalCandidates: { change: -5, direction: 'down' as 'up' | 'down' },
+    timeToHire: { change: 3, direction: 'down' as 'up' | 'down' },
+    interviewConversionRate: { change: 2, direction: 'up' as 'up' | 'down' },
   };
 
   // Theme toggle
@@ -966,17 +974,14 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
             <div className="border-b border-gray-200 dark:border-gray-700">
               <nav className="-mb-px flex space-x-6">
                 {[
-                  { id: 'overview', label: 'Overview', path: '/admin/dashboard' },
-                  { id: 'analytics', label: 'Analytics', path: '/admin/analytics' },
-                  { id: 'candidates', label: 'Candidates', path: '/admin/candidates' },
-                  { id: 'interviews', label: 'Interviews', path: '/admin/schedule' }
+                  { id: 'overview', label: 'Overview' },
+                  { id: 'analytics', label: 'Analytics' },
+                  { id: 'candidates', label: 'Candidates' },
+                  { id: 'interviews', label: 'Interviews' }
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      navigate(tab.path);
-                    }}
+                    onClick={() => setActiveTab(tab.id)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`${
@@ -992,154 +997,93 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
             </div>
           </div>
 
-          {/* Main Content Area */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Candidate Stages Chart */}
-              <motion.div
-                variants={cardVariants}
-                className={`p-6 rounded-xl ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border border-gray-700' 
-                    : 'bg-white border border-gray-200'
-                } shadow-md hover:shadow-lg transition-shadow`}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>Candidate Stages</h3>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={exportChart}
-                    className="flex items-center space-x-1 text-sm text-blue-400 hover:text-blue-500 transition-colors"
-                    aria-label="Export chart"
-                  >
-                    <DocumentArrowDownIcon className="h-4 w-4" />
-                    <span>Export</span>
-                  </motion.button>
-                </div>
-                {isLoading ? (
-                  <div className="h-64 flex items-center justify-center">
-                    <div className="animate-pulse space-y-4 w-full">
-                      <div className={`h-40 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-lg`}></div>
-                      <div className={`h-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded w-1/2 mx-auto`}></div>
-                    </div>
-                  </div>
-                ) : (
-                  <div ref={chartRef} className="h-64">
-                    <Doughnut
-                      data={stageChartData}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: {
-                            position: 'bottom',
-                            labels: {
-                              color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
-                              font: { family: 'Inter', size: 12 },
-                              padding: 20,
-                            },
-                          },
-                          tooltip: {
-                            backgroundColor: theme === 'dark' ? '#1F2937' : '#F3F4F6',
-                            titleColor: theme === 'dark' ? '#F3F4F6' : '#1F2937',
-                            bodyColor: theme === 'dark' ? '#F3F4F6' : '#1F2937',
-                            borderColor: '#3B82F6',
-                            borderWidth: 1,
-                            cornerRadius: 8,
-                          },
-                        },
-                      }}
+          {/* Tab Content */}
+          {activeTab === 'overview' ? (
+            <OverviewTab 
+              theme={theme} 
+              dashboardData={dashboardData}
+              trends={trends}
+            />
+          ) : activeTab === 'analytics' ? (
+            <AnalyticsTab 
+              theme={theme} 
+              dashboardData={dashboardData}
+            />
+          ) : activeTab === 'candidates' ? (
+            <CandidatesTab 
+              theme={theme} 
+              onSelectCandidate={(id) => navigate(`/admin/candidates/${id}`)}
+            />
+          ) : activeTab === 'interviews' && (
+            <InterviewsTab 
+              theme={theme} 
+              interviews={dashboardData.upcomingInterviews}
+              onScheduleInterview={() => navigate('/admin/schedule')}
                     />
-                  </div>
                 )}
               </motion.div>
+      </div>
 
-              {/* Hiring Rate Comparison */}
+      {/* Floating Hunter AI Chatbot Icon */}
               <motion.div
-                variants={cardVariants}
-                className={`p-6 rounded-xl ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border border-gray-700' 
-                    : 'bg-white border border-gray-200'
-                } shadow-md hover:shadow-lg transition-shadow`}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>Hiring Rate Comparison</h3>
-                </div>
-                {isLoading ? (
-                  <div className="h-64 flex items-center justify-center">
-                    <div className="animate-pulse space-y-4 w-full">
-                      <div className={`h-40 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-lg`}></div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-64">
-                    <Bar
-                      data={hiringRateComparisonData}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                          y: {
-                            beginAtZero: true,
-                            title: {
-                              display: true,
-                              text: 'Hiring Rate (%)',
-                              color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
-                            },
-                            ticks: {
-                              color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
-                            },
-                            grid: {
-                              color: theme === 'dark' ? '#374151' : '#E5E7EB',
-                            },
-                          },
-                          x: {
-                            ticks: {
-                              color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
-                            },
-                            grid: {
-                              color: theme === 'dark' ? '#374151' : '#E5E7EB',
-                            },
-                          },
-                        },
-                        plugins: {
-                          legend: {
-                            display: false,
-                          },
-                          tooltip: {
-                            backgroundColor: theme === 'dark' ? '#1F2937' : '#F3F4F6',
-                            titleColor: theme === 'dark' ? '#F3F4F6' : '#1F2937',
-                            bodyColor: theme === 'dark' ? '#F3F4F6' : '#1F2937',
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                )}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setIsChatOpen(true)}
+        className={`fixed right-6 bottom-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center cursor-pointer z-50 ${
+          theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+        }`}
+      >
+        <ChatBubbleBottomCenterTextIcon className="h-7 w-7 text-white" />
               </motion.div>
 
-              {/* Hunter AI */}
+      {/* Hunter AI Chat Modal */}
+      <AnimatePresence>
+        {isChatOpen && (
+          <>
+            {/* Modal Backdrop */}
               <motion.div
-                variants={cardVariants}
-                className={`p-6 rounded-xl ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border border-gray-700' 
-                    : 'bg-white border border-gray-200'
-                } shadow-md hover:shadow-lg transition-shadow`}
-              >
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'} mb-4`}>Hunter AI</h3>
-                <div className={`p-6 rounded-xl ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border border-gray-700' 
-                    : 'bg-gray-50 border border-gray-200'
-                } shadow-inner h-[400px] flex flex-col`}>
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsChatOpen(false)}
+              className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            />
+            
+            {/* Chat Modal */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className={`fixed right-6 bottom-20 w-96 rounded-lg shadow-xl overflow-hidden z-50 ${
+                theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              }`}
+            >
+              {/* Chat Header */}
+              <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden">
+                    <img 
+                      src="https://api.dicebear.com/7.x/bottts/svg?seed=Hunter" 
+                      alt="Hunter AI" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <h3 className={`font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>Hunter AI</h3>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setIsChatOpen(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </motion.button>
+              </div>
+              
                   {/* Chat Messages */}
                   <div 
                     ref={hunterMessagesRef}
-                    className="flex-1 overflow-y-auto scrollbar-thin mb-4 space-y-4"
+                className="h-80 overflow-y-auto p-4 space-y-4"
                   >
                     <AnimatePresence>
                       {hunterMessages.map((msg, index) => (
@@ -1213,14 +1157,14 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                   </div>
 
                   {/* Chat Features */}
-                  <div className="flex flex-wrap gap-2 mb-4">
+              <div className="p-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex flex-wrap gap-2">
                     {chatFeatures.map((feature) => (
                       <motion.button
                         key={feature.id}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={feature.action}
-                        className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-sm ${
+                    className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs ${
                           theme === 'dark'
                             ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -1233,7 +1177,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                   </div>
 
                   {/* Chat Input */}
-                  <form onSubmit={handleHunterSubmit} className="flex gap-2">
+              <form onSubmit={handleHunterSubmit} className="p-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex gap-2">
                     <input
                       type="text"
                       value={hunterInput}
@@ -1263,284 +1207,10 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                       Send
                     </motion.button>
                   </form>
-                </div>
               </motion.div>
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-6">
-              {/* Key Metrics */}
-              <motion.div
-                variants={cardVariants}
-                className={`p-6 rounded-xl ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border border-gray-700' 
-                    : 'bg-white border border-gray-200'
-                } shadow-md hover:shadow-lg transition-shadow sticky top-24`}
-              >
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>Key Metrics</h2>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsStatsExpanded(!isStatsExpanded)}
-                    className={`p-2 rounded-lg ${
-                      theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-                    } transition-colors`}
-                  >
-                    {isStatsExpanded ? (
-                      <ArrowUpIcon className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <ArrowDownIcon className="h-5 w-5 text-gray-500" />
-                    )}
-                  </motion.button>
-                </div>
-                <div className={`space-y-4 transition-all duration-300 ${
-                  isStatsExpanded ? 'max-h-[600px]' : 'max-h-[300px] overflow-hidden'
-                }`}>
-                  {[
-                    { 
-                      title: 'Active Jobs', 
-                      value: dashboardData.activeJobs, 
-                      icon: BriefcaseIcon, 
-                      trend: trends.activeJobs,
-                      tooltip: 'Number of currently active job postings',
-                      details: 'This metric reflects the total number of job postings that are currently open and accepting applications.',
-                      sparkline: sparklineData(dashboardData.activeJobs),
-                    },
-                    { 
-                      title: 'Total Candidates', 
-                      value: dashboardData.totalCandidates, 
-                      icon: UserGroupIcon, 
-                      trend: trends.totalCandidates,
-                      tooltip: 'Total candidates across all jobs',
-                      details: 'This shows the total number of candidates who have applied to all active and past job postings.',
-                      sparkline: sparklineData(dashboardData.totalCandidates),
-                    },
-                    { 
-                      title: 'Time to Hire', 
-                      value: dashboardData.timeToHire, 
-                      icon: ClockIcon,
-                      trend: trends.timeToHire,
-                      tooltip: 'Average days to hire a candidate',
-                      details: 'This metric indicates the average number of days it takes to hire a candidate from the date of application.',
-                      sparkline: sparklineData(parseInt(dashboardData.timeToHire) || 0),
-                    },
-                    { 
-                      title: 'Hiring Rate', 
-                      value: dashboardData.hiringRate, 
-                      icon: ChartBarIcon,
-                      tooltip: 'Percentage of applicants hired',
-                      details: 'This percentage represents the ratio of hired candidates to the total number of applicants.',
-                      sparkline: sparklineData(parseFloat(dashboardData.hiringRate) || 0),
-                    },
-                    { 
-                      title: 'Interview Conversion Rate', 
-                      value: dashboardData.interviewConversionRate || '0%', 
-                      icon: ArrowTrendingUpIcon,
-                      trend: trends.interviewConversionRate,
-                      tooltip: 'Percentage of interviews leading to hires',
-                      details: 'This metric shows the percentage of interviewed candidates who were successfully hired.',
-                      sparkline: sparklineData(parseFloat(dashboardData.interviewConversionRate || '0') || 0),
-                    },
-                  ].map((stat) => (
-                    <MuiTooltip key={stat.title} title={stat.tooltip} arrow>
-                      <motion.div
-                        variants={cardVariants}
-                        className={`p-4 rounded-lg cursor-pointer transition-all ${
-                          theme === 'dark' 
-                            ? 'bg-gray-700 border border-gray-600 hover:bg-gray-600' 
-                            : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
-                        }`}
-                        onClick={() => setExpandedMetric(expandedMetric === stat.title ? null : stat.title)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <stat.icon className="h-6 w-6 text-blue-400" />
-                            <div>
-                              <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{stat.title}</p>
-                              <p className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{stat.value}</p>
-                              {stat.trend && (
-                                <p className={`text-xs flex items-center gap-1 ${
-                                  stat.trend.direction === 'up' ? 'text-green-400' : 'text-red-400'
-                                }`}>
-                                  {stat.trend.direction === 'up' ? (
-                                    <ArrowUpIcon className="h-3 w-3" />
-                                  ) : (
-                                    <ArrowDownIcon className="h-3 w-3" />
-                                  )}
-                                  {stat.trend.change}% vs last week
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="h-10 w-20">
-                            <Line
-                              data={stat.sparkline}
-                              options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                  x: { display: false },
-                                  y: { display: false },
-                                },
-                                plugins: {
-                                  legend: { display: false },
-                                  tooltip: { enabled: false },
-                                },
-                              }}
-                            />
-                          </div>
-                        </div>
-                        {expandedMetric === stat.title && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="mt-3 p-3 bg-opacity-50 rounded-md"
-                          >
-                            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{stat.details}</p>
-                          </motion.div>
-                        )}
-                      </motion.div>
-                    </MuiTooltip>
-                  ))}
-                </div>
-              </motion.div>
-
-              {/* Top Job Performers */}
-              <motion.div
-                variants={cardVariants}
-                className={`p-6 rounded-xl ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border border-gray-700' 
-                    : 'bg-white border border-gray-200'
-                } shadow-md hover:shadow-lg transition-shadow`}
-              >
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'} mb-4`}>Top Job Performers</h3>
-                {isLoading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((_, index) => (
-                      <div key={index} className="animate-pulse">
-                        <div className={`h-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded w-3/4 mb-2`}></div>
-                        <div className={`h-2 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded w-1/2`}></div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {topJobs.map((job, index) => (
-                      <motion.div
-                        key={job.id}
-                        whileHover={{ scale: 1.02 }}
-                        className={`p-4 ${theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-gray-50 border border-gray-200'} rounded-lg flex items-center justify-between transition-colors`}
-                      >
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-semibold text-blue-400">{index + 1}.</span>
-                            <div>
-                              <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-                                {job.title}
-                              </p>
-                              <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {job.department} • {job.applicants} Applicants
-                              </p>
-                            </div>
-                          </div>
-                          <div className="mt-2">
-                            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Screening Progress</p>
-                            <div className="w-full bg-gray-300 rounded-full h-2 mt-1">
-                              <div
-                                className="bg-blue-400 h-2 rounded-full progress-bar"
-                                style={{ width: `${job.screeningProgress || 0}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => {
-                            navigate(`/admin/jobs/${job.id}`);
-                            handleHunterAction('view_job_details', { jobTitle: job.title });
-                          }}
-                          className="text-blue-400 hover:text-blue-500 transition-colors"
-                        >
-                          <EyeIcon className="h-5 w-5" />
-                        </motion.button>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-
-              {/* Quick Insights */}
-              <motion.div
-                variants={cardVariants}
-                className={`p-6 rounded-xl ${
-                  theme === 'dark' 
-                    ? 'bg-gray-800 border border-gray-700' 
-                    : 'bg-white border border-gray-200'
-                } shadow-md hover:shadow-lg transition-shadow`}
-              >
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'} mb-4`}>Quick Insights</h3>
-                {insights.length === 0 ? (
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    No insights available at the moment.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {insights.map((insight) => (
-                      <motion.div
-                        key={insight.id}
-                        whileHover={{ scale: 1.01 }}
-                        className={`p-3 ${theme === 'dark' ? 'bg-gray-700 border border-gray-600' : 'bg-gray-50 border border-gray-200'} rounded-lg transition-colors`}
-                      >
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{insight.message}</p>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={insight.action}
-                          className="text-blue-400 hover:text-blue-500 text-sm mt-1 transition-colors"
-                        >
-                          Take Action
-                        </motion.button>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            </div>
-          </div>
-
-          {/* Tab Content */}
-          <div className="space-y-6">
-            {activeTab === 'overview' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Overview content */}
-              </div>
-            )}
-            
-            {activeTab === 'analytics' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Analytics content */}
-              </div>
-            )}
-            
-            {activeTab === 'candidates' && (
-              <div className="space-y-4">
-                {/* Candidates content */}
-              </div>
-            )}
-            
-            {activeTab === 'interviews' && (
-              <div className="space-y-4">
-                {/* Interviews content */}
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Styles */}
       <style>{`
