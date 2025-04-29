@@ -518,8 +518,20 @@ Requirements:
       'ml engineer': 'Machine Learning Engineer',
       'ux designer': 'Product Designer',
       'frontend engineer': 'Frontend Engineer',
+      'backend engineer': 'Backend Developer',
+      'full stack': 'Full Stack Developer',
+      'data analyst': 'Data Analyst',
+      'product manager': 'Product Manager',
+      'devops': 'DevOps Engineer',
+      'cloud engineer': 'Cloud Engineer',
+      'security engineer': 'Security Engineer',
+      'qa engineer': 'QA Engineer',
+      'technical writer': 'Technical Writer',
+      'business analyst': 'Business Analyst',
+      'project manager': 'Project Manager',
     };
 
+    // First try to find company name
     for (const companyName of companyNames) {
       if (promptLower.includes(companyName)) {
         company = companies.find(c => c.name.toLowerCase() === companyName)?.name || null;
@@ -527,6 +539,7 @@ Requirements:
       }
     }
 
+    // Then try to find job title
     for (const job of allJobs) {
       if (promptLower.includes(job)) {
         jobTitle = companies.flatMap(c => c.jobs).find(j => j.toLowerCase() === job) || null;
@@ -534,6 +547,7 @@ Requirements:
       }
     }
 
+    // If no exact match, try synonyms
     if (!jobTitle) {
       for (const [synonym, actualJob] of Object.entries(jobSynonyms)) {
         if (promptLower.includes(synonym)) {
@@ -543,12 +557,13 @@ Requirements:
       }
     }
 
+    // If we have company but no job title, try to extract from context
     if (company && !jobTitle) {
       const companyIndex = promptLower.indexOf(company.toLowerCase());
       const beforeCompany = promptLower.substring(0, companyIndex).trim();
       const afterCompany = promptLower.substring(companyIndex + company.length).trim();
 
-      const prepositions = ['for a', 'as a', 'position at', 'role at', 'with', 'at'];
+      const prepositions = ['for a', 'as a', 'position at', 'role at', 'with', 'at', 'looking for a', 'need a', 'hiring a'];
       for (const prep of prepositions) {
         if (beforeCompany.includes(prep)) {
           const potentialJob = beforeCompany.split(prep)[1]?.trim();
@@ -575,12 +590,13 @@ Requirements:
       }
     }
 
+    // If we have job title but no company, try to extract from context
     if (jobTitle && !company) {
       const jobIndex = promptLower.indexOf(jobTitle.toLowerCase());
       const beforeJob = promptLower.substring(0, jobIndex).trim();
       const afterJob = promptLower.substring(jobIndex + jobTitle.length).trim();
 
-      const companyIndicators = ['at', 'with', 'for'];
+      const companyIndicators = ['at', 'with', 'for', 'from', 'in'];
       for (const indicator of companyIndicators) {
         if (afterJob.includes(indicator)) {
           const potentialCompany = afterJob.split(indicator)[1]?.trim();
@@ -1076,7 +1092,7 @@ Requirements:
           width: '90%',
           maxWidth: 1000,
           maxHeight: '90vh',
-          bgcolor: '#1f2937',
+          bgcolor: '#ffffff',
           borderRadius: 2,
           boxShadow: 24,
           display: 'flex',
@@ -1088,9 +1104,9 @@ Requirements:
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
         }}>
-          <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+          <Typography variant="h6" sx={{ color: '#111827' }}>
             {useAI ? 'AI-Driven Job Creation' : steps[activeStep]}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -1105,18 +1121,18 @@ Requirements:
                   }}
                   sx={{
                     '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: '#8b5cf6',
+                      color: '#2563eb',
                       '& + .MuiSwitch-track': {
-                        backgroundColor: '#6d28d9',
+                        backgroundColor: '#1d4ed8',
                       },
                     },
                   }}
                 />
               }
               label="Use AI to Create Job"
-              sx={{ color: '#f3f4f6' }}
+              sx={{ color: '#374151' }}
             />
-            <IconButton onClick={onClose} sx={{ color: '#9ca3af' }}>
+            <IconButton onClick={onClose} sx={{ color: '#6b7280' }}>
               <XMarkIcon className="h-6 w-6" />
             </IconButton>
           </Box>
@@ -1129,20 +1145,20 @@ Requirements:
             width: '8px',
           },
           '&::-webkit-scrollbar-track': {
-            background: '#374151',
+            background: '#f3f4f6',
             borderRadius: '4px',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: '#4b5563',
+            background: '#d1d5db',
             borderRadius: '4px',
             '&:hover': {
-              background: '#6b7280',
+              background: '#9ca3af',
             },
           },
         }}>
           {useAI ? (
             <Box sx={{ mt: 4 }}>
-              <Typography variant="h6" sx={{ color: '#f3f4f6', mb: 2 }}>
+              <Typography variant="h6" sx={{ color: '#111827', mb: 2 }}>
                 Chat with Job Creation Bot
               </Typography>
               <Box
@@ -1151,7 +1167,7 @@ Requirements:
                   overflowY: 'auto',
                   mb: 3,
                   p: 2,
-                  bgcolor: '#2d3748',
+                  bgcolor: '#f3f4f6',
                   borderRadius: 2,
                 }}
               >
@@ -1160,7 +1176,7 @@ Requirements:
                     <ListItem key={idx} sx={{ flexDirection: msg.sender === 'Bot' ? 'row' : 'row-reverse' }}>
                       <Avatar
                         sx={{
-                          bgcolor: msg.sender === 'Bot' ? '#8b5cf6' : '#4b5563',
+                          bgcolor: msg.sender === 'Bot' ? '#2563eb' : '#6b7280',
                           mr: msg.sender === 'Bot' ? 2 : 0,
                           ml: msg.sender === 'User' ? 2 : 0,
                         }}
@@ -1171,8 +1187,8 @@ Requirements:
                         sx={{
                           p: 2,
                           maxWidth: '70%',
-                          bgcolor: msg.sender === 'Bot' ? '#374151' : '#4b5563',
-                          color: '#f3f4f6',
+                          bgcolor: msg.sender === 'Bot' ? '#f3f4f6' : '#e5e7eb',
+                          color: '#111827',
                           borderRadius: 2,
                           whiteSpace: 'pre-wrap',
                         }}
@@ -1191,23 +1207,23 @@ Requirements:
                   onChange={(e) => setUserPrompt(e.target.value)}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      bgcolor: '#374151',
+                      bgcolor: '#ffffff',
                       borderRadius: 2,
-                      '& fieldset': { borderColor: '#4b5563' },
+                      '& fieldset': { borderColor: '#d1d5db' },
                     },
-                    '& .MuiInputLabel-root': { color: '#9ca3af' },
+                    '& .MuiInputLabel-root': { color: '#6b7280' },
                   }}
                 />
                 <Button
                   onClick={handleChatSubmit}
                   disabled={loadingAI}
                   sx={{
-                    bgcolor: '#8b5cf6',
+                    bgcolor: '#2563eb',
                     color: '#ffffff',
                     px: 4,
                     py: 1.5,
                     borderRadius: 2,
-                    '&:hover': { bgcolor: '#7c3aed' },
+                    '&:hover': { bgcolor: '#1d4ed8' },
                   }}
                 >
                   {loadingAI ? <CircularProgress size={20} /> : 'Send'}
@@ -1222,14 +1238,14 @@ Requirements:
                     <StepLabel
                       sx={{
                         '& .MuiStepLabel-label': {
-                          color: '#9ca3af',
-                          '&.Mui-active': { color: '#8b5cf6' },
-                          '&.Mui-completed': { color: '#10b981' },
+                          color: '#6b7280',
+                          '&.Mui-active': { color: '#2563eb' },
+                          '&.Mui-completed': { color: '#059669' },
                         },
                         '& .MuiStepIcon-root': {
-                          color: '#4b5563',
-                          '&.Mui-active': { color: '#8b5cf6' },
-                          '&.Mui-completed': { color: '#10b981' },
+                          color: '#9ca3af',
+                          '&.Mui-active': { color: '#2563eb' },
+                          '&.Mui-completed': { color: '#059669' },
                         },
                       }}
                     >
@@ -1271,24 +1287,24 @@ Requirements:
                 <Box sx={{ mt: 4 }}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
-                      <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
+                      <Card sx={{ bgcolor: '#ffffff', borderRadius: 2, boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                         <CardContent>
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <BuildingOfficeIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                            <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                            <BuildingOfficeIcon className="h-5 w-5 text-blue-600 mr-2" />
+                            <Typography variant="h6" sx={{ color: '#111827' }}>
                               Company & Role
                             </Typography>
                           </Box>
                           <FormControl fullWidth sx={{ mb: 3 }}>
-                            <InputLabel sx={{ color: '#9ca3af' }}>Company *</InputLabel>
+                            <InputLabel sx={{ color: '#6b7280' }}>Company *</InputLabel>
                             <Select
                               value={selectedCompany}
                               onChange={handleCompanyChange}
                               required
                               sx={{
-                                bgcolor: '#1f2937',
+                                bgcolor: '#ffffff',
                                 borderRadius: 2,
-                                '& .MuiSelect-select': { color: '#f3f4f6' },
+                                '& .MuiSelect-select': { color: '#111827' },
                               }}
                             >
                               {companies.map((company) => (
@@ -1308,22 +1324,22 @@ Requirements:
                           </FormControl>
 
                           <FormControl fullWidth sx={{ mb: 3 }}>
-                            <InputLabel sx={{ color: '#9ca3af' }}>Job Title *</InputLabel>
+                            <InputLabel sx={{ color: '#6b7280' }}>Job Title *</InputLabel>
                             <Select
                               value={formData.jobTitle}
                               onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
                               required
                               disabled={!selectedCompany}
                               sx={{
-                                bgcolor: '#1f2937',
+                                bgcolor: '#ffffff',
                                 borderRadius: 2,
-                                '& .MuiSelect-select': { color: '#f3f4f6' },
+                                '& .MuiSelect-select': { color: '#111827' },
                               }}
                             >
                               {availableJobs.map((job) => (
                                 <MenuItem key={job} value={job}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <BriefcaseIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
+                                    <BriefcaseIcon className="h-5 w-5 text-blue-600 mr-2" />
                                     {job}
                                   </Box>
                                 </MenuItem>
@@ -1335,11 +1351,11 @@ Requirements:
                     </Grid>
 
                     <Grid item xs={12} md={6}>
-                      <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
+                      <Card sx={{ bgcolor: '#ffffff', borderRadius: 2, boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                         <CardContent>
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <CalendarIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                            <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                            <CalendarIcon className="h-5 w-5 text-blue-600 mr-2" />
+                            <Typography variant="h6" sx={{ color: '#111827' }}>
                               Timeline & Location
                             </Typography>
                           </Box>
@@ -1355,25 +1371,25 @@ Requirements:
                             sx={{
                               mb: 3,
                               '& .MuiOutlinedInput-root': {
-                                bgcolor: '#1f2937',
+                                bgcolor: '#ffffff',
                                 borderRadius: 2,
-                                '& fieldset': { borderColor: '#4b5563' },
+                                '& fieldset': { borderColor: '#d1d5db' },
                               },
                             }}
                           />
 
                           <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                             <FormControl fullWidth>
-                              <InputLabel sx={{ color: '#9ca3af' }}>Language *</InputLabel>
+                              <InputLabel sx={{ color: '#6b7280' }}>Language *</InputLabel>
                               <Select
                                 name="language"
                                 value={formData.language}
                                 onChange={handleSelectChange}
                                 displayEmpty
                                 sx={{
-                                  bgcolor: '#1f2937',
+                                  bgcolor: '#ffffff',
                                   borderRadius: 2,
-                                  '& .MuiSelect-select': { color: '#f3f4f6' },
+                                  '& .MuiSelect-select': { color: '#111827' },
                                 }}
                               >
                                 {languages.map((lang) => (
@@ -1383,16 +1399,16 @@ Requirements:
                             </FormControl>
 
                             <FormControl fullWidth>
-                              <InputLabel sx={{ color: '#9ca3af' }}>Timezone *</InputLabel>
+                              <InputLabel sx={{ color: '#6b7280' }}>Timezone *</InputLabel>
                               <Select
                                 name="timezone"
                                 value={formData.timezone}
                                 onChange={handleSelectChange}
                                 displayEmpty
                                 sx={{
-                                  bgcolor: '#1f2937',
+                                  bgcolor: '#ffffff',
                                   borderRadius: 2,
-                                  '& .MuiSelect-select': { color: '#f3f4f6' },
+                                  '& .MuiSelect-select': { color: '#111827' },
                                 }}
                               >
                                 {timezones.map((tz) => (
@@ -1406,11 +1422,11 @@ Requirements:
                     </Grid>
 
                     <Grid item xs={12}>
-                      <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
+                      <Card sx={{ bgcolor: '#ffffff', borderRadius: 2, boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                         <CardContent>
                           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <DocumentTextIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                            <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                            <DocumentTextIcon className="h-5 w-5 text-blue-600 mr-2" />
+                            <Typography variant="h6" sx={{ color: '#111827' }}>
                               Job Description
                             </Typography>
                           </Box>
@@ -1424,9 +1440,9 @@ Requirements:
                             rows={6}
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                bgcolor: '#1f2937',
+                                bgcolor: '#ffffff',
                                 borderRadius: 2,
-                                '& fieldset': { borderColor: '#4b5563' },
+                                '& fieldset': { borderColor: '#d1d5db' },
                               },
                             }}
                           />
@@ -1439,17 +1455,17 @@ Requirements:
 
               {activeStep === 1 && (
                 <Box sx={{ mt: 4 }}>
-                  <Card sx={{ bgcolor: '#374151', borderRadius: 2, mb: 3 }}>
+                  <Card sx={{ bgcolor: '#ffffff', borderRadius: 2, boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', mb: 3 }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <ChatBubbleLeftRightIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                        <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                        <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600 mr-2" />
+                        <Typography variant="h6" sx={{ color: '#111827' }}>
                           Question Generation Settings
                         </Typography>
                       </Box>
 
                       <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ color: '#374151', mb: 1 }}>
                           Question Types
                         </Typography>
                         <ToggleButtonGroup
@@ -1463,10 +1479,10 @@ Requirements:
                               key={type.value}
                               value={type.value}
                               sx={{
-                                color: '#f3f4f6',
-                                borderColor: '#4b5563',
+                                color: '#374151',
+                                borderColor: '#d1d5db',
                                 '&.Mui-selected': {
-                                  bgcolor: '#8b5cf6',
+                                  bgcolor: '#2563eb',
                                   color: '#ffffff',
                                 },
                               }}
@@ -1479,7 +1495,7 @@ Requirements:
                       </Box>
 
                       <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ color: '#374151', mb: 1 }}>
                           Difficulty Level
                         </Typography>
                         <ToggleButtonGroup
@@ -1494,8 +1510,8 @@ Requirements:
                               key={level.value}
                               value={level.value}
                               sx={{
-                                color: '#f3f4f6',
-                                borderColor: '#4b5563',
+                                color: '#374151',
+                                borderColor: '#d1d5db',
                                 '&.Mui-selected': {
                                   bgcolor: level.color,
                                   color: '#ffffff',
@@ -1509,7 +1525,7 @@ Requirements:
                       </Box>
 
                       <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" sx={{ color: '#9ca3af', mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ color: '#374151', mb: 1 }}>
                           Question Complexity
                         </Typography>
                         <Slider
@@ -1521,8 +1537,8 @@ Requirements:
                           marks
                           valueLabelDisplay="auto"
                           sx={{
-                            color: '#8b5cf6',
-                            '& .MuiSlider-markLabel': { color: '#9ca3af' },
+                            color: '#2563eb',
+                            '& .MuiSlider-markLabel': { color: '#6b7280' },
                           }}
                         />
                       </Box>
@@ -1555,12 +1571,12 @@ Requirements:
                           }}
                           disabled={isGenerating || !formData.jobTitle}
                           sx={{
-                            bgcolor: '#8b5cf6',
+                            bgcolor: '#2563eb',
                             color: '#ffffff',
                             px: 4,
                             py: 1.5,
                             borderRadius: 2,
-                            '&:hover': { bgcolor: '#7c3aed' },
+                            '&:hover': { bgcolor: '#1d4ed8' },
                           }}
                         >
                           {isGenerating ? 'Generating...' : 'Generate Questions'}
@@ -1571,9 +1587,9 @@ Requirements:
                             <CircularProgress
                               variant="determinate"
                               value={generationProgress}
-                              sx={{ color: '#8b5cf6', mr: 2 }}
+                              sx={{ color: '#2563eb', mr: 2 }}
                             />
-                            <Typography variant="body2" sx={{ color: '#9ca3af' }}>
+                            <Typography variant="body2" sx={{ color: '#6b7280' }}>
                               Generating questions... {generationProgress}%
                             </Typography>
                           </Box>
@@ -1583,11 +1599,11 @@ Requirements:
                   </Card>
 
                   {questions.length > 0 && (
-                    <Card sx={{ bgcolor: '#374151', borderRadius: 2 }}>
+                    <Card sx={{ bgcolor: '#ffffff', borderRadius: 2, boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
                       <CardContent>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <DocumentTextIcon className="h-5 w-5 text-[#8b5cf6] mr-2" />
-                          <Typography variant="h6" sx={{ color: '#f3f4f6' }}>
+                          <DocumentTextIcon className="h-5 w-5 text-blue-600 mr-2" />
+                          <Typography variant="h6" sx={{ color: '#111827' }}>
                             Generated Questions
                           </Typography>
                         </Box>
@@ -1597,14 +1613,15 @@ Requirements:
                               key={index}
                               sx={{
                                 mb: 2,
-                                bgcolor: '#1f2937',
+                                bgcolor: '#ffffff',
                                 borderRadius: 2,
-                                '&:hover': { bgcolor: '#2d3748' },
+                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                                '&:hover': { bgcolor: '#f3f4f6' },
                               }}
                             >
                               <CardContent>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                  <Typography variant="subtitle2" sx={{ color: '#9ca3af' }}>
+                                  <Typography variant="subtitle2" sx={{ color: '#374151' }}>
                                     Question {index + 1}
                                   </Typography>
                                   <IconButton
@@ -1613,7 +1630,7 @@ Requirements:
                                       const newQuestions = questions.filter((_, i) => i !== index);
                                       setQuestions(newQuestions);
                                     }}
-                                    sx={{ color: '#9ca3af' }}
+                                    sx={{ color: '#6b7280' }}
                                   >
                                     <TrashIcon className="h-4 w-4" />
                                   </IconButton>
@@ -1629,8 +1646,8 @@ Requirements:
                                   }}
                                   sx={{
                                     '& .MuiOutlinedInput-root': {
-                                      color: '#f3f4f6',
-                                      '& fieldset': { borderColor: '#4b5563' },
+                                      color: '#111827',
+                                      '& fieldset': { borderColor: '#d1d5db' },
                                     },
                                   }}
                                 />
@@ -1646,20 +1663,20 @@ Requirements:
 
               {activeStep === 2 && (
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="h6" sx={{ mb: 3, color: '#f3f4f6' }}>
+                  <Typography variant="h6" sx={{ mb: 3, color: '#111827' }}>
                     Job Requirements & Details
                   </Typography>
 
                   <FormControl fullWidth sx={{ mb: 3 }}>
-                    <InputLabel sx={{ color: '#9ca3af' }}>Experience Level</InputLabel>
+                    <InputLabel sx={{ color: '#6b7280' }}>Experience Level</InputLabel>
                     <Select
                       value={formData.experience}
                       onChange={handleSelectChange}
                       name="experience"
                       sx={{
-                        bgcolor: '#374151',
+                        bgcolor: '#ffffff',
                         borderRadius: 2,
-                        '& .MuiSelect-select': { color: '#f3f4f6' },
+                        '& .MuiSelect-select': { color: '#111827' },
                       }}
                     >
                       {experienceLevels.map((level) => (
@@ -1677,11 +1694,11 @@ Requirements:
                     sx={{
                       mb: 3,
                       '& .MuiOutlinedInput-root': {
-                        bgcolor: '#374151',
+                        bgcolor: '#ffffff',
                         borderRadius: 2,
-                        '& fieldset': { borderColor: '#4b5563' },
+                        '& fieldset': { borderColor: '#d1d5db' },
                       },
-                      '& .MuiInputLabel-root': { color: '#9ca3af' },
+                      '& .MuiInputLabel-root': { color: '#6b7280' },
                     }}
                   />
 
@@ -1694,11 +1711,11 @@ Requirements:
                     sx={{
                       mb: 3,
                       '& .MuiOutlinedInput-root': {
-                        bgcolor: '#374151',
+                        bgcolor: '#ffffff',
                         borderRadius: 2,
-                        '& fieldset': { borderColor: '#4b5563' },
+                        '& fieldset': { borderColor: '#d1d5db' },
                       },
-                      '& .MuiInputLabel-root': { color: '#9ca3af' },
+                      '& .MuiInputLabel-root': { color: '#6b7280' },
                     }}
                   />
 
@@ -1711,15 +1728,15 @@ Requirements:
                       onChange={handleInputChange}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          bgcolor: '#374151',
+                          bgcolor: '#ffffff',
                           borderRadius: 2,
-                          '& fieldset': { borderColor: '#4b5563' },
+                          '& fieldset': { borderColor: '#d1d5db' },
                         },
-                        '& .MuiInputLabel-root': { color: '#9ca3af' },
+                        '& .MuiInputLabel-root': { color: '#6b7280' },
                       }}
                       InputProps={{
                         endAdornment: (
-                          <IconButton onClick={handleAddSkill} sx={{ color: '#8b5cf6' }}>
+                          <IconButton onClick={handleAddSkill} sx={{ color: '#2563eb' }}>
                             <PlusIcon className="h-5 w-5" />
                           </IconButton>
                         ),
@@ -1732,11 +1749,11 @@ Requirements:
                           label={skill}
                           onDelete={() => handleRemoveSkill(skill)}
                           sx={{
-                            bgcolor: '#4b5563',
-                            color: '#f3f4f6',
+                            bgcolor: '#f3f4f6',
+                            color: '#374151',
                             '& .MuiChip-deleteIcon': {
-                              color: '#9ca3af',
-                              '&:hover': { color: '#f3f4f6' },
+                              color: '#6b7280',
+                              '&:hover': { color: '#374151' },
                             },
                           }}
                         />
@@ -1744,21 +1761,21 @@ Requirements:
                     </Box>
                   </Box>
 
-                  <Divider sx={{ my: 3, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+                  <Divider sx={{ my: 3, borderColor: 'rgba(0, 0, 0, 0.1)' }} />
 
-                  <Typography variant="h6" sx={{ mb: 2, color: '#f3f4f6' }}>
+                  <Typography variant="h6" sx={{ mb: 2, color: '#111827' }}>
                     Interview Process
                   </Typography>
 
                   <FormControl fullWidth sx={{ mb: 3 }}>
-                    <InputLabel sx={{ color: '#9ca3af' }}>Interview Rounds</InputLabel>
+                    <InputLabel sx={{ color: '#6b7280' }}>Interview Rounds</InputLabel>
                     <Select
                       value={formData.interviewRounds || 1}
                       onChange={(e) => setFormData({ ...formData, interviewRounds: Number(e.target.value) })}
                       sx={{
-                        bgcolor: '#374151',
+                        bgcolor: '#ffffff',
                         borderRadius: 2,
-                        '& .MuiSelect-select': { color: '#f3f4f6' },
+                        '& .MuiSelect-select': { color: '#111827' },
                       }}
                     >
                       {[1, 2, 3, 4, 5].map((round) => (
@@ -1774,16 +1791,16 @@ Requirements:
                         onChange={(e) => setFormData({ ...formData, codingChallenge: e.target.checked })}
                         sx={{
                           '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: '#8b5cf6',
+                            color: '#2563eb',
                             '& + .MuiSwitch-track': {
-                              backgroundColor: '#6d28d9',
+                              backgroundColor: '#1d4ed8',
                             },
                           },
                         }}
                       />
                     }
                     label="Include Coding Challenge"
-                    sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
+                    sx={{ color: '#374151', mb: 2, display: 'block' }}
                   />
 
                   <FormControlLabel
@@ -1793,16 +1810,16 @@ Requirements:
                         onChange={(e) => setFormData({ ...formData, systemDesign: e.target.checked })}
                         sx={{
                           '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: '#8b5cf6',
+                            color: '#2563eb',
                             '& + .MuiSwitch-track': {
-                              backgroundColor: '#6d28d9',
+                              backgroundColor: '#1d4ed8',
                             },
                           },
                         }}
                       />
                     }
                     label="Include System Design Round"
-                    sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
+                    sx={{ color: '#374151', mb: 2, display: 'block' }}
                   />
 
                   <FormControlLabel
@@ -1812,23 +1829,23 @@ Requirements:
                         onChange={(e) => setFormData({ ...formData, pairProgramming: e.target.checked })}
                         sx={{
                           '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: '#8b5cf6',
+                            color: '#2563eb',
                             '& + .MuiSwitch-track': {
-                              backgroundColor: '#6d28d9',
+                              backgroundColor: '#1d4ed8',
                             },
                           },
                         }}
                       />
                     }
                     label="Include Pair Programming Session"
-                    sx={{ color: '#f3f4f6', mb: 2, display: 'block' }}
+                    sx={{ color: '#374151', mb: 2, display: 'block' }}
                   />
                 </Box>
               )}
 
               {activeStep === 3 && (
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="h6" sx={{ mb: 3, color: '#f3f4f6' }}>
+                  <Typography variant="h6" sx={{ mb: 3, color: '#111827' }}>
                     Invite Candidates
                   </Typography>
 
@@ -1841,15 +1858,15 @@ Requirements:
                     sx={{
                       mb: 3,
                       '& .MuiOutlinedInput-root': {
-                        bgcolor: '#374151',
+                        bgcolor: '#ffffff',
                         borderRadius: 2,
-                        '& fieldset': { borderColor: '#4b5563' },
+                        '& fieldset': { borderColor: '#d1d5db' },
                       },
-                      '& .MuiInputLabel-root': { color: '#9ca3af' },
+                      '& .MuiInputLabel-root': { color: '#6b7280' },
                     }}
                     InputProps={{
                       endAdornment: (
-                        <IconButton onClick={handleAddCandidate} sx={{ color: '#8b5cf6' }}>
+                        <IconButton onClick={handleAddCandidate} sx={{ color: '#2563eb' }}>
                           <PlusIcon className="h-5 w-5" />
                         </IconButton>
                       ),
@@ -1864,241 +1881,241 @@ Requirements:
                         onDelete={() => handleRemoveCandidate(candidate)}
                         sx={{
                           m: 0.5,
-                          bgcolor: '#4b5563',
-                          color: '#f3f4f6',
+                          bgcolor: '#f3f4f6',
+                          color: '#374151',
                           '& .MuiChip-deleteIcon': {
-                            color: '#9ca3af',
-                            '&:hover': { color: '#f3f4f6' },
+                            color: '#6b7280',
+                            '&:hover': { color: '#374151' },
                           },
                         }}
                       />
                     ))}
                   </Box>
 
-                  <Typography variant="body2" sx={{ color: '#9ca3af',
-                  mb: 2 }}>
-                  Candidates will receive an email invitation with:
-                </Typography>
-                <ul style={{ color: '#f3f4f6', paddingLeft: '1.5rem' }}>
-                  <li>Job description and requirements</li>
-                  <li>Interview scheduling options</li>
-                  <li>Technical assessment (if enabled)</li>
-                  <li>Application instructions</li>
-                </ul>
+                  <Typography variant="body2" sx={{ color: '#6b7280', mb: 2 }}>
+                    Candidates will receive an email invitation with:
+                  </Typography>
+                  <ul style={{ color: '#374151', paddingLeft: '1.5rem' }}>
+                    <li>Job description and requirements</li>
+                    <li>Interview scheduling options</li>
+                    <li>Technical assessment (if enabled)</li>
+                    <li>Application instructions</li>
+                  </ul>
 
-                <Divider sx={{ my: 3, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+                  <Divider sx={{ my: 3, borderColor: 'rgba(0, 0, 0, 0.1)' }} />
 
-                <Typography variant="h6" sx={{ mb: 2, color: '#f3f4f6' }}>
-                  Post Job to Job Boards
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#9ca3af', mb: 2 }}>
-                  Share this job posting on external platforms to reach more candidates. You can modify this later if needed.
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={formData.postToLinkedIn}
-                        onChange={(e) => setFormData({ ...formData, postToLinkedIn: e.target.checked })}
-                        sx={{
-                          color: '#4b5563',
-                          '&.Mui-checked': { color: '#8b5cf6' },
-                        }}
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Typography sx={{ color: '#f3f4f6', mr: 1 }}>
-                          Post to LinkedIn
-                        </Typography>
-                        {userAccounts.linkedIn?.username && (
-                          <Typography variant="body2" sx={{ color: '#9ca3af' }}>
-                            (Logged in as {userAccounts.linkedIn.username})
+                  <Typography variant="h6" sx={{ mb: 2, color: '#111827' }}>
+                    Post Job to Job Boards
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#6b7280', mb: 2 }}>
+                    Share this job posting on external platforms to reach more candidates. You can modify this later if needed.
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.postToLinkedIn}
+                          onChange={(e) => setFormData({ ...formData, postToLinkedIn: e.target.checked })}
+                          sx={{
+                            color: '#d1d5db',
+                            '&.Mui-checked': { color: '#2563eb' },
+                          }}
+                        />
+                      }
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Typography sx={{ color: '#374151', mr: 1 }}>
+                            Post to LinkedIn
                           </Typography>
-                        )}
-                      </Box>
-                    }
-                    sx={{ color: '#f3f4f6' }}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={formData.postToIndeed}
-                        onChange={(e) => setFormData({ ...formData, postToIndeed: e.target.checked })}
-                        sx={{
-                          color: '#4b5563',
-                          '&.Mui-checked': { color: '#8b5cf6' },
-                        }}
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Typography sx={{ color: '#f3f4f6', mr: 1 }}>
-                          Post to Indeed
-                        </Typography>
-                        {userAccounts.indeed?.username && (
-                          <Typography variant="body2" sx={{ color: '#9ca3af' }}>
-                            (Logged in as {userAccounts.indeed.username})
+                          {userAccounts.linkedIn?.username && (
+                            <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                              (Logged in as {userAccounts.linkedIn.username})
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                      sx={{ color: '#374151' }}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.postToIndeed}
+                          onChange={(e) => setFormData({ ...formData, postToIndeed: e.target.checked })}
+                          sx={{
+                            color: '#d1d5db',
+                            '&.Mui-checked': { color: '#2563eb' },
+                          }}
+                        />
+                      }
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Typography sx={{ color: '#374151', mr: 1 }}>
+                            Post to Indeed
                           </Typography>
-                        )}
-                      </Box>
-                    }
-                    sx={{ color: '#f3f4f6' }}
-                  />
+                          {userAccounts.indeed?.username && (
+                            <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                              (Logged in as {userAccounts.indeed.username})
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                      sx={{ color: '#374151' }}
+                    />
+                  </Box>
                 </Box>
-              </Box>
-            )}
-          </>
-        )}
-      </Box>
-
-      {!useAI && (
-        <Box sx={{
-          p: 3,
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          justifyContent: 'space-between',
-        }}>
-          <Button
-            onClick={handleBack}
-            disabled={activeStep === 0}
-            startIcon={<ArrowLeftIcon className="h-5 w-5" />}
-            sx={{
-              color: '#9ca3af',
-              '&:hover': { color: '#f3f4f6' },
-            }}
-          >
-            Back
-          </Button>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {activeStep === steps.length - 1 && (
-              <Button
-                onClick={() => {
-                  setPreviewData({
-                    jobTitle: formData.jobTitle,
-                    company: selectedCompany,
-                    description: formData.description,
-                    requirements: formData.skills,
-                    questions: questions,
-                    interviewProcess: {
-                      rounds: formData.interviewRounds,
-                      codingChallenge: formData.codingChallenge,
-                      systemDesign: formData.systemDesign,
-                      pairProgramming: formData.pairProgramming,
-                    },
-                  });
-                  setShowPreview(true);
-                }}
-                startIcon={<EyeIcon className="h-5 w-5" />}
-                sx={{
-                  bgcolor: '#4b5563',
-                  color: '#ffffff',
-                  '&:hover': { bgcolor: '#374151' },
-                }}
-              >
-                Preview
-              </Button>
-            )}
-            <Button
-              onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
-              endIcon={activeStep === steps.length - 1 ? null : <ArrowRightIcon className="h-5 w-5" />}
-              sx={{
-                bgcolor: '#8b5cf6',
-                color: '#ffffff',
-                px: 4,
-                '&:hover': { bgcolor: '#7c3aed' },
-              }}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Creating...' : activeStep === steps.length - 1 ? 'Create Job' : 'Next'}
-            </Button>
-          </Box>
-        </Box>
-      )}
-
-      {/* Preview Modal */}
-      <Modal
-        open={showPreview}
-        onClose={() => setShowPreview(false)}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Box
-          sx={{
-            width: '80%',
-            maxWidth: 800,
-            maxHeight: '80vh',
-            bgcolor: '#1f2937',
-            borderRadius: 2,
-            p: 3,
-            overflowY: 'auto',
-          }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-            <Typography variant="h5" sx={{ color: '#f3f4f6' }}>
-              Job Posting Preview
-            </Typography>
-            <IconButton onClick={() => setShowPreview(false)} sx={{ color: '#9ca3af' }}>
-              <XMarkIcon className="h-6 w-6" />
-            </IconButton>
-          </Box>
-          {previewData && (
-            <Box sx={{ color: '#f3f4f6' }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                {previewData.jobTitle} at {previewData.company}
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 2 }}>
-                {previewData.description}
-              </Typography>
-              <Typography variant="h6" sx={{ mb: 1 }}>
-                Requirements
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                {previewData.requirements.map((req: string, index: number) => (
-                  <Chip
-                    key={index}
-                    label={req}
-                    sx={{
-                      m: 0.5,
-                      bgcolor: '#4b5563',
-                      color: '#f3f4f6',
-                    }}
-                  />
-                ))}
-              </Box>
-              <Typography variant="h6" sx={{ mb: 1 }}>
-                Interview Questions
-              </Typography>
-              {previewData.questions.map((question: string, index: number) => (
-                <Typography key={index} variant="body2" sx={{ mb: 1 }}>
-                  {index + 1}. {question}
-                </Typography>
-              ))}
-              <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-                Interview Process
-              </Typography>
-              <Typography variant="body2">
-                Rounds: {previewData.interviewProcess.rounds}
-              </Typography>
-              <Typography variant="body2">
-                Coding Challenge: {previewData.interviewProcess.codingChallenge ? 'Yes' : 'No'}
-              </Typography>
-              <Typography variant="body2">
-                System Design: {previewData.interviewProcess.systemDesign ? 'Yes' : 'No'}
-              </Typography>
-              <Typography variant="body2">
-                Pair Programming: {previewData.interviewProcess.pairProgramming ? 'Yes' : 'No'}
-              </Typography>
-            </Box>
+              )}
+            </>
           )}
         </Box>
-      </Modal>
-    </Box>
-  </Modal>
-);
+
+        {!useAI && (
+          <Box sx={{
+            p: 3,
+            borderTop: '1px solid rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+          }}>
+            <Button
+              onClick={handleBack}
+              disabled={activeStep === 0}
+              startIcon={<ArrowLeftIcon className="h-5 w-5" />}
+              sx={{
+                color: '#6b7280',
+                '&:hover': { color: '#374151' },
+              }}
+            >
+              Back
+            </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {activeStep === steps.length - 1 && (
+                <Button
+                  onClick={() => {
+                    setPreviewData({
+                      jobTitle: formData.jobTitle,
+                      company: selectedCompany,
+                      description: formData.description,
+                      requirements: formData.skills,
+                      questions: questions,
+                      interviewProcess: {
+                        rounds: formData.interviewRounds,
+                        codingChallenge: formData.codingChallenge,
+                        systemDesign: formData.systemDesign,
+                        pairProgramming: formData.pairProgramming,
+                      },
+                    });
+                    setShowPreview(true);
+                  }}
+                  startIcon={<EyeIcon className="h-5 w-5" />}
+                  sx={{
+                    bgcolor: '#f3f4f6',
+                    color: '#374151',
+                    '&:hover': { bgcolor: '#e5e7eb' },
+                  }}
+                >
+                  Preview
+                </Button>
+              )}
+              <Button
+                onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
+                endIcon={activeStep === steps.length - 1 ? null : <ArrowRightIcon className="h-5 w-5" />}
+                sx={{
+                  bgcolor: '#2563eb',
+                  color: '#ffffff',
+                  px: 4,
+                  '&:hover': { bgcolor: '#1d4ed8' },
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Creating...' : activeStep === steps.length - 1 ? 'Create Job' : 'Next'}
+              </Button>
+            </Box>
+          </Box>
+        )}
+
+        {/* Preview Modal */}
+        <Modal
+          open={showPreview}
+          onClose={() => setShowPreview(false)}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Box
+            sx={{
+              width: '80%',
+              maxWidth: 800,
+              maxHeight: '80vh',
+              bgcolor: '#ffffff',
+              borderRadius: 2,
+              p: 3,
+              overflowY: 'auto',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Typography variant="h5" sx={{ color: '#111827' }}>
+                Job Posting Preview
+              </Typography>
+              <IconButton onClick={() => setShowPreview(false)} sx={{ color: '#6b7280' }}>
+                <XMarkIcon className="h-6 w-6" />
+              </IconButton>
+            </Box>
+            {previewData && (
+              <Box sx={{ color: '#374151' }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  {previewData.jobTitle} at {previewData.company}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 2 }}>
+                  {previewData.description}
+                </Typography>
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  Requirements
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  {previewData.requirements.map((req: string, index: number) => (
+                    <Chip
+                      key={index}
+                      label={req}
+                      sx={{
+                        m: 0.5,
+                        bgcolor: '#f3f4f6',
+                        color: '#374151',
+                      }}
+                    />
+                  ))}
+                </Box>
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  Interview Questions
+                </Typography>
+                {previewData.questions.map((question: string, index: number) => (
+                  <Typography key={index} variant="body2" sx={{ mb: 1 }}>
+                    {index + 1}. {question}
+                  </Typography>
+                ))}
+                <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                  Interview Process
+                </Typography>
+                <Typography variant="body2">
+                  Rounds: {previewData.interviewProcess.rounds}
+                </Typography>
+                <Typography variant="body2">
+                  Coding Challenge: {previewData.interviewProcess.codingChallenge ? 'Yes' : 'No'}
+                </Typography>
+                <Typography variant="body2">
+                  System Design: {previewData.interviewProcess.systemDesign ? 'Yes' : 'No'}
+                </Typography>
+                <Typography variant="body2">
+                  Pair Programming: {previewData.interviewProcess.pairProgramming ? 'Yes' : 'No'}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Modal>
+      </Box>
+    </Modal>
+  );
 };
 
 export default CreateJobModal;

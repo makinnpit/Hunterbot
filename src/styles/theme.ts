@@ -304,9 +304,9 @@ const components = {
         },
       },
       clickable: {
-        '&:hover': {
+          '&:hover': {
           transform: 'translateY(-1px)',
-        },
+          },
         '&:active': {
           transform: 'translateY(0)',
         },

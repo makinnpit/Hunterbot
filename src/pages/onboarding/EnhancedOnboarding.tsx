@@ -457,6 +457,11 @@ const EnhancedOnboarding: React.FC = () => {
       recognition.interimResults = true;
       recognition.lang = 'en-US';
       
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+        setIsListening(true);
+      };
+      
       recognition.onresult = (event: any) => {
         const transcript = Array.from(event.results)
           .map((result: any) => result[0].transcript)
@@ -465,19 +470,131 @@ const EnhancedOnboarding: React.FC = () => {
         setCurrentAnswer(transcript);
       };
       
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        
+        let errorMessage = 'Speech recognition error. Please try again or use text input.';
+        
+        switch (event.error) {
+          case 'network':
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+            break;
+          case 'not-allowed':
+            errorMessage = 'Microphone access denied. Please allow microphone access in your browser settings.';
+            break;
+          case 'service-not-allowed':
+            errorMessage = 'Speech recognition service not available. Please try again later.';
+            break;
+          case 'no-speech':
+            errorMessage = 'No speech detected. Please speak clearly or try again.';
+            break;
+          case 'audio-capture':
+            errorMessage = 'Audio capture error. Please check your microphone settings.';
+            break;
+        }
+        
+        // Show error message to user
+        setMessages(prev => [...prev, {
+          sender: 'HunterAI',
+          text: errorMessage,
+          options: ['Use text input instead', 'Try again'],
+          avatar: 'H',
+        }]);
+      };
+      
       recognition.onend = () => {
+        console.log('Speech recognition ended');
         if (isListening) {
-          recognition.start();
+          try {
+            recognition.start();
+          } catch (error) {
+            console.error('Failed to restart speech recognition:', error);
+            setIsListening(false);
+            setMessages(prev => [...prev, {
+              sender: 'HunterAI',
+              text: 'Speech recognition service unavailable. Please use text input instead.',
+              options: ['Use text input'],
+              avatar: 'H',
+            }]);
+          }
         }
       };
       
       setSpeechRecognition(recognition);
+    } else {
+      console.error('Speech recognition not supported in this browser');
+      setMessages(prev => [...prev, {
+        sender: 'HunterAI',
+        text: 'Speech recognition is not supported in your browser. Please use text input instead.',
+        options: ['Use text input'],
+        avatar: 'H',
+      }]);
     }
+
+    // Cleanup function
+    return () => {
+      if (speechRecognition) {
+        speechRecognition.stop();
+      }
+    };
   }, []);
   
   // Start/stop listening
-  const toggleListening = () => {
-    setIsListening(!isListening);
+  const handleToggleListening = () => {
+    if (!speechRecognition) {
+      setMessages(prev => [...prev, {
+        sender: 'HunterAI',
+        text: 'Speech recognition is not available. Please use text input instead.',
+        options: ['Use text input'],
+        avatar: 'H',
+      }]);
+      return;
+    }
+
+    if (!isListening) {
+      try {
+        // Request microphone permission
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(() => {
+            try {
+              speechRecognition.start();
+            } catch (error) {
+              console.error('Failed to start speech recognition:', error);
+              setMessages(prev => [...prev, {
+                sender: 'HunterAI',
+                text: 'Failed to start speech recognition. Please use text input instead.',
+                options: ['Use text input'],
+                avatar: 'H',
+              }]);
+            }
+          })
+          .catch((error) => {
+            console.error('Microphone permission denied:', error);
+            setMessages(prev => [...prev, {
+              sender: 'HunterAI',
+              text: 'Microphone access denied. Please allow microphone access in your browser settings.',
+              options: ['Use text input instead'],
+              avatar: 'H',
+            }]);
+          });
+      } catch (error) {
+        console.error('Failed to start speech recognition:', error);
+        setMessages(prev => [...prev, {
+          sender: 'HunterAI',
+          text: 'Failed to start speech recognition. Please use text input instead.',
+          options: ['Use text input'],
+          avatar: 'H',
+        }]);
+      }
+    } else {
+      try {
+        speechRecognition.stop();
+        setIsListening(false);
+      } catch (error) {
+        console.error('Failed to stop speech recognition:', error);
+      }
+    }
   };
   
   // Select role for interview prep
@@ -683,6 +800,20 @@ const EnhancedOnboarding: React.FC = () => {
   
   // Update handleOptionClick to use comprehensive answers
   const handleOptionClick = (option: string) => {
+    if (option === 'Use text input' || option === 'Use text input instead') {
+      // Focus on the text input field
+      const textInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+      if (textInput) {
+        textInput.focus();
+      }
+      return;
+    }
+    
+    if (option === 'Try again') {
+      handleToggleListening();
+      return;
+    }
+    
     const userMessage: ChatMessage = {
       sender: 'User',
       text: option,
@@ -923,11 +1054,70 @@ const EnhancedOnboarding: React.FC = () => {
         }}
       >
         {messages.map((message, index) => (
-          <ChatBubble
+          <Box
             key={index}
-            message={message}
-            onOptionClick={handleOptionClick}
-          />
+            sx={{
+              display: 'flex',
+              flexDirection: message.sender === 'User' ? 'row-reverse' : 'row',
+              alignItems: 'flex-start',
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            <OnboardingAvatar
+              type={message.sender === 'User' ? 'user' : 'bot'}
+              letter={message.avatar || (message.sender === 'User' ? 'U' : 'H')}
+              size="small"
+              pulseEffect={message.sender === 'HunterAI' && message.isTyping}
+            />
+            <Box
+              sx={{
+                maxWidth: '70%',
+                p: 2,
+                borderRadius: 2,
+                background: message.sender === 'User' 
+                  ? 'rgba(99, 102, 241, 0.1)' 
+                  : 'rgba(255, 255, 255, 0.8)',
+                border: `1px solid ${
+                  message.sender === 'User' 
+                    ? 'rgba(99, 102, 241, 0.2)' 
+                    : 'rgba(0, 0, 0, 0.1)'
+                }`,
+              }}
+            >
+              {message.isTyping ? (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <CircularProgress size={12} />
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    HunterAI is typing...
+                  </Typography>
+                </Box>
+              ) : (
+                <>
+                  <Typography variant="body1" sx={{ color: 'text.primary' }}>
+                    {message.text}
+                  </Typography>
+                  {message.options && message.options.length > 0 && (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+                      {message.options.map((option, optionIndex) => (
+                        <Chip
+                          key={optionIndex}
+                          label={option}
+                          onClick={() => handleOptionClick(option)}
+                          sx={{
+                            cursor: 'pointer',
+                            '&:hover': {
+                              backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                            },
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+          </Box>
         ))}
         <div ref={messagesEndRef} />
       </Box>
@@ -1219,9 +1409,9 @@ const EnhancedOnboarding: React.FC = () => {
         </Box>
         
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title={isListening ? "Stop Listening" : "Start Listening"}>
+          <Tooltip title={isListening ? "Stop Recording" : "Start Recording"}>
             <IconButton 
-              onClick={toggleListening} 
+              onClick={handleToggleListening} 
               color={isListening ? "error" : "primary"}
               sx={{ 
                 border: '1px solid',

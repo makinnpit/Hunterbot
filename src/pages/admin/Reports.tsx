@@ -150,7 +150,7 @@ ${details.recommendations ? `\nRecommendations: ${details.recommendations}` : ''
   };
 
   return (
-    <div className="min-h-screen pt-20 px-4 sm:px-6 lg:px-8 bg-gray-900">
+    <div className="min-h-screen pt-20 px-4 sm:px-6 lg:px-8 bg-white">
       {/* Navbar */}
       <Navbar
         userName="Troy Teeples"
@@ -169,14 +169,14 @@ ${details.recommendations ? `\nRecommendations: ${details.recommendations}` : ''
         className="max-w-7xl mx-auto"
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
             Reports
           </h2>
           <div className="flex items-center space-x-4">
             <select
               value={selectedJob}
               onChange={(e) => setSelectedJob(e.target.value)}
-              className="bg-gray-800 text-gray-200 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Jobs</option>
               {jobs.map(job => (
@@ -186,7 +186,7 @@ ${details.recommendations ? `\nRecommendations: ${details.recommendations}` : ''
             <select
               value={selectedReportType}
               onChange={(e) => setSelectedReportType(e.target.value)}
-              className="bg-gray-800 text-gray-200 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Report Types</option>
               <option value="Interview Summary">Interview Summary</option>
@@ -194,24 +194,24 @@ ${details.recommendations ? `\nRecommendations: ${details.recommendations}` : ''
             </select>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="bg-gray-800 text-gray-200 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Sort by Date ({sortOrder === 'asc' ? 'Ascending' : 'Descending'})
             </button>
           </div>
         </div>
 
-        <div className="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-gray-200">
+            <table className="w-full text-left text-gray-700">
               <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Report ID</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Job Title</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Candidate Name</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Report Type</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Generated Date</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Actions</th>
+                <tr className="border-b border-gray-200">
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Report ID</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Job Title</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Candidate Name</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Report Type</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Generated Date</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -219,7 +219,7 @@ ${details.recommendations ? `\nRecommendations: ${details.recommendations}` : ''
                   <motion.tr
                     key={report.id}
                     variants={rowVariants}
-                    className="border-b border-gray-700 hover:bg-gray-700 transition-colors"
+                    className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <td className="py-4 px-6 text-sm">{report.id}</td>
                     <td className="py-4 px-6 text-sm">{jobs.find(j => j.id === report.jobId)?.title || 'N/A'}</td>
@@ -229,13 +229,13 @@ ${details.recommendations ? `\nRecommendations: ${details.recommendations}` : ''
                     <td className="py-4 px-6 text-sm flex space-x-2">
                       <button
                         onClick={() => handleViewDetails(report)}
-                        className="text-blue-400 hover:text-blue-300"
+                        className="text-blue-600 hover:text-blue-500"
                       >
                         <EyeIcon className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => handleExportReport(report)}
-                        className="text-blue-400 hover:text-blue-300"
+                        className="text-blue-600 hover:text-blue-500"
                       >
                         <DocumentArrowDownIcon className="h-5 w-5" />
                       </button>
@@ -253,20 +253,20 @@ ${details.recommendations ? `\nRecommendations: ${details.recommendations}` : ''
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-gray-200">Report Details</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Report Details</h3>
                 <button
                   onClick={() => setDetailsModalOpen(false)}
-                  className="text-gray-400 hover:text-purple-500"
+                  className="text-gray-400 hover:text-gray-500"
                 >
                   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              <div className="text-gray-200">
+              <div className="text-gray-700">
                 <p><strong>Report ID:</strong> {selectedReport.id}</p>
                 <p><strong>Job Title:</strong> {jobs.find(j => j.id === selectedReport.jobId)?.title || 'N/A'}</p>
                 <p><strong>Candidate:</strong> {candidates.find(c => c.id === selectedReport.candidateId)?.name || 'N/A'}</p>

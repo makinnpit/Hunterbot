@@ -9,35 +9,32 @@ import {
 import { Bar, Line, Doughnut } from 'react-chartjs-2';
 
 interface AnalyticsTabProps {
-  theme: 'light' | 'dark';
-  dashboardData: {
-    activeJobs: number;
-    totalCandidates: number;
-    timeToHire: string;
-    hiringRate: string;
-    interviewConversionRate?: string;
+  analyticsData: {
+    applicationsOverTime: { date: string; count: number }[];
+    candidateSources: { source: string; count: number }[];
+    hiringFunnel: { stage: string; count: number }[];
   };
 }
 
-const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => {
+const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ analyticsData }) => {
   const stageChartData = {
     labels: ['Applied', 'Interviewed', 'Shortlisted', 'Hired'],
     datasets: [
       {
         data: [60, 28, 15, 8],
         backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#A855F7'],
-        borderColor: theme === 'dark' ? ['#1F2937', '#1F2937', '#1F2937', '#1F2937'] : ['#E5E7EB', '#E5E7EB', '#E5E7EB', '#E5E7EB'],
-        borderWidth: 2,
+        borderColor: ['#2563EB', '#9333EA'],
+        borderWidth: 1,
       },
     ],
   };
 
-  const hiringRateComparisonData = {
-    labels: ['This Month', 'Last Month'],
+  const hiringRateChartData = {
+    labels: ['Current', 'Previous'],
     datasets: [
       {
         label: 'Hiring Rate (%)',
-        data: [parseFloat(dashboardData.hiringRate) || 0, parseFloat(dashboardData.hiringRate) * 0.8 || 0],
+        data: [15, 12], // Using static values since hiringRate is no longer in the props
         backgroundColor: ['#3B82F6', '#A855F7'],
         borderColor: ['#2563EB', '#9333EA'],
         borderWidth: 1,
@@ -80,9 +77,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
           <CalendarIcon className="h-5 w-5 text-gray-400" />
-          <select className={`bg-transparent border rounded-lg px-3 py-2 ${
-            theme === 'dark' ? 'border-gray-700 text-gray-200' : 'border-gray-300 text-gray-700'
-          }`}>
+          <select className={`bg-transparent border rounded-lg px-3 py-2`}>
             <option>Last 7 days</option>
             <option>Last 30 days</option>
             <option>Last 90 days</option>
@@ -91,9 +86,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
         </div>
         <div className="flex items-center space-x-2">
           <FunnelIcon className="h-5 w-5 text-gray-400" />
-          <select className={`bg-transparent border rounded-lg px-3 py-2 ${
-            theme === 'dark' ? 'border-gray-700 text-gray-200' : 'border-gray-300 text-gray-700'
-          }`}>
+          <select className={`bg-transparent border rounded-lg px-3 py-2`}>
             <option>All Jobs</option>
             <option>Active Jobs</option>
             <option>Archived Jobs</option>
@@ -106,14 +99,10 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
         {/* Candidate Stages Chart */}
         <motion.div
           whileHover={{ scale: 1.01 }}
-          className={`p-6 rounded-xl ${
-            theme === 'dark' 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-white border border-gray-200'
-          } shadow-md`}
+          className={`p-6 rounded-xl bg-white border border-gray-200 shadow-md`}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+            <h3 className="text-lg font-semibold text-gray-900">
               Candidate Stages
             </h3>
             <button
@@ -135,7 +124,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
                   legend: {
                     position: 'bottom',
                     labels: {
-                      color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                      color: '#6b7280',
                     },
                   },
                 },
@@ -147,14 +136,10 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
         {/* Hiring Rate Comparison */}
         <motion.div
           whileHover={{ scale: 1.01 }}
-          className={`p-6 rounded-xl ${
-            theme === 'dark' 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-white border border-gray-200'
-          } shadow-md`}
+          className={`p-6 rounded-xl bg-white border border-gray-200 shadow-md`}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+            <h3 className="text-lg font-semibold text-gray-900">
               Hiring Rate Comparison
             </h3>
             <button
@@ -168,7 +153,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
           <div className="h-64">
             <Bar
               id="hiringRateChart"
-              data={hiringRateComparisonData}
+              data={hiringRateChartData}
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
@@ -176,18 +161,18 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
                   y: {
                     beginAtZero: true,
                     grid: {
-                      color: theme === 'dark' ? '#374151' : '#E5E7EB',
+                      color: '#e5e7eb',
                     },
                     ticks: {
-                      color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                      color: '#6b7280',
                     },
                   },
                   x: {
                     grid: {
-                      color: theme === 'dark' ? '#374151' : '#E5E7EB',
+                      color: '#e5e7eb',
                     },
                     ticks: {
-                      color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                      color: '#6b7280',
                     },
                   },
                 },
@@ -199,14 +184,10 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
         {/* Time Series Chart */}
         <motion.div
           whileHover={{ scale: 1.01 }}
-          className={`p-6 rounded-xl ${
-            theme === 'dark' 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-white border border-gray-200'
-          } shadow-md lg:col-span-2`}
+          className={`p-6 rounded-xl bg-white border border-gray-200 shadow-md lg:col-span-2`}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+            <h3 className="text-lg font-semibold text-gray-900">
               Applications & Interviews Trend
             </h3>
             <button
@@ -228,18 +209,18 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
                   y: {
                     beginAtZero: true,
                     grid: {
-                      color: theme === 'dark' ? '#374151' : '#E5E7EB',
+                      color: '#e5e7eb',
                     },
                     ticks: {
-                      color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                      color: '#6b7280',
                     },
                   },
                   x: {
                     grid: {
-                      color: theme === 'dark' ? '#374151' : '#E5E7EB',
+                      color: '#e5e7eb',
                     },
                     ticks: {
-                      color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                      color: '#6b7280',
                     },
                   },
                 },
@@ -247,7 +228,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ theme, dashboardData }) => 
                   legend: {
                     position: 'bottom',
                     labels: {
-                      color: theme === 'dark' ? '#D1D5DB' : '#4B5563',
+                      color: '#6b7280',
                     },
                   },
                 },

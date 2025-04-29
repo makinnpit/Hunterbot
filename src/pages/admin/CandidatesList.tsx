@@ -119,12 +119,12 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDING': return 'bg-yellow-500/20 text-yellow-400';
-      case 'INTERVIEWED': return 'bg-blue-500/20 text-blue-400';
-      case 'SHORTLISTED': return 'bg-green-500/20 text-green-400';
-      case 'REJECTED': return 'bg-red-500/20 text-red-400';
-      case 'HIRED': return 'bg-green-500/20 text-green-400';
-      default: return 'bg-gray-500/20 text-gray-400';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'INTERVIEWED': return 'bg-blue-100 text-blue-800';
+      case 'SHORTLISTED': return 'bg-green-100 text-green-800';
+      case 'REJECTED': return 'bg-red-100 text-red-800';
+      case 'HIRED': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -147,7 +147,7 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
   const selectedCandidatesData = candidates.filter(c => selectedCandidates.includes(c.id));
 
   return (
-    <div className="min-h-screen pt-20 px-4 sm:px-6 lg:px-8 bg-gray-900">
+    <div className="min-h-screen pt-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
       {/* Navbar */}
       <Navbar
         userName="Troy Teeples"
@@ -166,14 +166,14 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
         className="max-w-7xl mx-auto"
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
             Candidates
           </h2>
           <div className="flex items-center space-x-4">
             <select
               value={selectedJob}
               onChange={(e) => setSelectedJob(e.target.value)}
-              className="bg-gray-800 text-gray-200 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="bg-white text-gray-900 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Jobs</option>
               {jobs.map(job => (
@@ -185,8 +185,8 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
               disabled={selectedCandidates.length < 2}
               className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedCandidates.length < 2
-                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-purple-600 text-white hover:bg-purple-700'
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
               <ArrowsRightLeftIcon className="h-5 w-5 mr-2" />
@@ -195,18 +195,18 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
           </div>
         </div>
 
-        <div className="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-gray-200">
+            <table className="w-full text-left text-gray-900">
               <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Select</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Name</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Job Title</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Status</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Interview Score</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Last Updated</th>
-                  <th className="py-4 px-6 text-sm font-medium text-gray-400">Actions</th>
+                <tr className="border-b border-gray-200">
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Select</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Name</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Job Title</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Status</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Interview Score</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Last Updated</th>
+                  <th className="py-4 px-6 text-sm font-medium text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -214,14 +214,14 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
                   <motion.tr
                     key={candidate.id}
                     variants={rowVariants}
-                    className="border-b border-gray-700 hover:bg-gray-700 transition-colors"
+                    className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <td className="py-4 px-6">
                       <input
                         type="checkbox"
                         checked={selectedCandidates.includes(candidate.id)}
                         onChange={() => handleSelectCandidate(candidate.id)}
-                        className="h-4 w-4 text-purple-500 rounded border-gray-600 bg-gray-800 focus:ring-purple-500"
+                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                       />
                     </td>
                     <td className="py-4 px-6 text-sm">{candidate.name}</td>
@@ -230,7 +230,7 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
                       <select
                         value={candidate.status}
                         onChange={(e) => handleStatusChange(candidate.id, e.target.value)}
-                        className={`px-2 py-1 rounded-lg text-xs font-medium ${getStatusColor(candidate.status)} border-0 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-800`}
+                        className={`px-2 py-1 rounded-lg text-xs font-medium ${getStatusColor(candidate.status)} border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white`}
                       >
                         <option value="PENDING">Pending</option>
                         <option value="INTERVIEWED">Interviewed</option>
@@ -242,9 +242,9 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
                     <td className="py-4 px-6 text-sm">
                       {candidate.interviewScore !== undefined ? (
                         <div className="flex items-center space-x-2">
-                          <div className="w-24 bg-gray-700 rounded-full h-2">
+                          <div className="w-24 bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-purple-500 h-2 rounded-full"
+                              className="bg-blue-500 h-2 rounded-full"
                               style={{ width: `${candidate.interviewScore}%` }}
                             ></div>
                           </div>
@@ -260,13 +260,13 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
                     <td className="py-4 px-6 text-sm flex space-x-2">
                       <button
                         onClick={() => handleView(candidate)}
-                        className="text-blue-400 hover:text-blue-300"
+                        className="text-blue-600 hover:text-blue-700"
                       >
                         <EyeIcon className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => handleDownloadResume(candidate)}
-                        className="text-blue-400 hover:text-blue-300"
+                        className="text-blue-600 hover:text-blue-700"
                       >
                         <DocumentArrowDownIcon className="h-5 w-5" />
                       </button>
@@ -284,13 +284,13 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-gray-800 rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-gray-200">Compare Candidates</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Compare Candidates</h3>
                 <button
                   onClick={() => setCompareDialogOpen(false)}
-                  className="text-gray-400 hover:text-purple-500"
+                  className="text-gray-500 hover:text-blue-600"
                 >
                   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -298,25 +298,25 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-gray-200">
+                <table className="w-full text-left text-gray-900">
                   <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="py-3 px-4 text-sm font-medium text-gray-400">Field</th>
+                    <tr className="border-b border-gray-200">
+                      <th className="py-3 px-4 text-sm font-medium text-gray-500">Field</th>
                       {selectedCandidatesData.map(candidate => (
-                        <th key={candidate.id} className="py-3 px-4 text-sm font-medium text-gray-400">
+                        <th key={candidate.id} className="py-3 px-4 text-sm font-medium text-gray-500">
                           {candidate.name}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-b border-gray-700">
+                    <tr className="border-b border-gray-200">
                       <td className="py-3 px-4 text-sm font-medium">Job Title</td>
                       {selectedCandidatesData.map(candidate => (
                         <td key={candidate.id} className="py-3 px-4 text-sm">{candidate.jobTitle}</td>
                       ))}
                     </tr>
-                    <tr className="border-b border-gray-700">
+                    <tr className="border-b border-gray-200">
                       <td className="py-3 px-4 text-sm font-medium">Status</td>
                       {selectedCandidatesData.map(candidate => (
                         <td key={candidate.id} className="py-3 px-4 text-sm">
@@ -326,7 +326,7 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
                         </td>
                       ))}
                     </tr>
-                    <tr className="border-b border-gray-700">
+                    <tr className="border-b border-gray-200">
                       <td className="py-3 px-4 text-sm font-medium">Interview Score</td>
                       {selectedCandidatesData.map(candidate => (
                         <td key={candidate.id} className="py-3 px-4 text-sm">
@@ -334,13 +334,13 @@ const CandidatesList: React.FC<CandidatesListProps> = ({ onSelectCandidate }) =>
                         </td>
                       ))}
                     </tr>
-                    <tr className="border-b border-gray-700">
+                    <tr className="border-b border-gray-200">
                       <td className="py-3 px-4 text-sm font-medium">Email</td>
                       {selectedCandidatesData.map(candidate => (
                         <td key={candidate.id} className="py-3 px-4 text-sm">{candidate.email}</td>
                       ))}
                     </tr>
-                    <tr className="border-b border-gray-700">
+                    <tr className="border-b border-gray-200">
                       <td className="py-3 px-4 text-sm font-medium">Phone</td>
                       {selectedCandidatesData.map(candidate => (
                         <td key={candidate.id} className="py-3 px-4 text-sm">{candidate.phone}</td>

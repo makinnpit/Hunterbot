@@ -225,7 +225,7 @@ const Settings: React.FC = () => {
               <div className="flex items-center space-x-4">
                 <img src={companyDetails.logoUrl} alt="Company Logo" className="h-16 object-contain" />
                 <div>
-                  <label className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer">
+                  <label className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
                     Upload Logo
                     <input
                       type="file"
@@ -237,11 +237,11 @@ const Settings: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCompanyDetails(prev => ({ ...prev, logoUrl: '/logo-placeholder.png' }))}
-                    className="ml-2 px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
+                    className="ml-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
                   >
                     Reset
                   </button>
-                  <p className="text-xs text-gray-400 mt-1">Allowed PNG or JPEG. Max size of 800K.</p>
+                  <p className="text-xs text-gray-500 mt-1">Allowed PNG or JPEG. Max size of 800K.</p>
                 </div>
               </div>
             </div>
@@ -249,37 +249,37 @@ const Settings: React.FC = () => {
             {/* Editable Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-400">Company Name</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Company Name</label>
                 <input
                   type="text"
                   value={companyDetails.companyName}
                   onChange={(e) =>
                     setCompanyDetails(prev => ({ ...prev, companyName: e.target.value }))
                   }
-                  className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="outrankstrategy.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-400">Website</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Website</label>
                 <input
                   type="text"
                   value={companyDetails.website}
                   onChange={(e) =>
                     setCompanyDetails(prev => ({ ...prev, website: e.target.value }))
                   }
-                  className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="outrankstrategy.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-400">Company Size</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Company Size</label>
                 <select
                   value={companyDetails.companySize}
                   onChange={(e) =>
                     setCompanyDetails(prev => ({ ...prev, companySize: e.target.value }))
                   }
-                  className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option>1-10</option>
                   <option>11-50</option>
@@ -289,25 +289,25 @@ const Settings: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-400">Enter Phone Number</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Enter Phone Number</label>
                 <input
                   type="tel"
                   value={companyDetails.phoneNumber}
                   onChange={(e) =>
                     setCompanyDetails(prev => ({ ...prev, phoneNumber: e.target.value }))
                   }
-                  className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="+63 912 345 6789"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-400">Company Type</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Company Type</label>
                 <select
                   value={companyDetails.companyType}
                   onChange={(e) =>
                     setCompanyDetails(prev => ({ ...prev, companyType: e.target.value }))
                   }
-                  className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option>Corporate</option>
                   <option>Startup</option>
@@ -315,13 +315,13 @@ const Settings: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-400">Company Category</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Company Category</label>
                 <select
                   value={companyDetails.companyCategory}
                   onChange={(e) =>
                     setCompanyDetails(prev => ({ ...prev, companyCategory: e.target.value }))
                   }
-                  className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option>Public Limited Company</option>
                   <option>Private Limited Company</option>
@@ -335,19 +335,19 @@ const Settings: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className={`px-6 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
               <button
                 type="button"
                 onClick={() => fetchSettings()}
-                className="px-6 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition"
+                className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
               >
                 Reset
               </button>
             </div>
-            {error && <p className="text-red-400 mt-2">{error}</p>}
+            {error && <p className="text-red-600 mt-2">{error}</p>}
           </form>
         );
 
@@ -358,11 +358,11 @@ const Settings: React.FC = () => {
               {integrations.map((integration, index) => (
                 <div
                   key={integration.name}
-                  className="flex items-center justify-between p-4 rounded-lg bg-gray-800 border border-gray-700"
+                  className="flex items-center justify-between p-4 rounded-lg bg-white border border-gray-200"
                 >
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-200">{integration.name}</h3>
-                    <p className="text-sm text-gray-400">
+                    <h3 className="text-lg font-semibold text-gray-900">{integration.name}</h3>
+                    <p className="text-sm text-gray-500">
                       {integration.name === 'LinkedIn'
                         ? 'Post jobs directly to your company LinkedIn account'
                         : 'Send job openings to Indeed in one click'}
@@ -372,8 +372,8 @@ const Settings: React.FC = () => {
                     <span
                       className={`text-xs px-2 py-1 rounded-full ${
                         integration.connected
-                          ? 'text-green-400 bg-green-700/20'
-                          : 'text-yellow-400 bg-yellow-700/20'
+                          ? 'text-green-600 bg-green-100'
+                          : 'text-yellow-600 bg-yellow-100'
                       }`}
                     >
                       {integration.connected ? 'Connected' : 'Not Connected'}
@@ -384,7 +384,7 @@ const Settings: React.FC = () => {
                       className={`px-4 py-2 text-sm rounded-lg transition ${
                         integration.connected
                           ? 'bg-red-600 hover:bg-red-500 text-white'
-                          : 'bg-purple-600 hover:bg-purple-700 text-white'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
                       } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {loading ? 'Updating...' : integration.connected ? 'Disconnect' : 'Connect'}
@@ -393,26 +393,26 @@ const Settings: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div className="text-sm text-gray-400 mt-4">
+            <div className="text-sm text-gray-500 mt-4">
               Want to integrate more platforms? Reach out to{' '}
-              <a href="mailto:support@simplac.io" className="text-purple-400 hover:underline">
+              <a href="mailto:support@simplac.io" className="text-blue-600 hover:underline">
                 support@simplac.io
               </a>
             </div>
-            {error && <p className="text-red-400 mt-2">{error}</p>}
+            {error && <p className="text-red-600 mt-2">{error}</p>}
           </div>
         );
 
       case 'AI Settings':
         return (
           <div>
-            <h2 className="text-xl font-semibold text-gray-200 mb-2">AI Interview Settings</h2>
-            <p className="text-gray-400 mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">AI Interview Settings</h2>
+            <p className="text-gray-500 mb-4">
               Customize AI tone, scoring weights, and follow-up logic.
             </p>
             <button
               onClick={() => setAIModalOpen(true)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               Configure AI
             </button>
@@ -423,13 +423,13 @@ const Settings: React.FC = () => {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-gray-800 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+                  className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
                 >
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold text-gray-200">Configure AI Settings</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">Configure AI Settings</h3>
                     <button
                       onClick={() => setAIModalOpen(false)}
-                      className="text-gray-400 hover:text-purple-500"
+                      className="text-gray-400 hover:text-gray-500"
                     >
                       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -443,7 +443,7 @@ const Settings: React.FC = () => {
                   </div>
                   <form onSubmit={handleAISettingsSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-400">AI Tone</label>
+                      <label className="block text-sm font-medium mb-1 text-gray-700">AI Tone</label>
                       <select
                         value={aiSettings.tone}
                         onChange={(e) =>
@@ -452,7 +452,7 @@ const Settings: React.FC = () => {
                             tone: e.target.value as AISettings['tone'],
                           }))
                         }
-                        className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="formal">Formal</option>
                         <option value="casual">Casual</option>
@@ -460,12 +460,12 @@ const Settings: React.FC = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-400">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">
                         Scoring Weights
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <label className="text-sm text-gray-400">Technical Skills</label>
+                          <label className="text-sm text-gray-500">Technical Skills</label>
                           <input
                             type="number"
                             min="0"
@@ -480,11 +480,11 @@ const Settings: React.FC = () => {
                                 },
                               }))
                             }
-                            className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div>
-                          <label className="text-sm text-gray-400">Communication</label>
+                          <label className="text-sm text-gray-500">Communication</label>
                           <input
                             type="number"
                             min="0"
@@ -499,11 +499,11 @@ const Settings: React.FC = () => {
                                 },
                               }))
                             }
-                            className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div>
-                          <label className="text-sm text-gray-400">Cultural Fit</label>
+                          <label className="text-sm text-gray-500">Cultural Fit</label>
                           <input
                             type="number"
                             min="0"
@@ -518,13 +518,13 @@ const Settings: React.FC = () => {
                                 },
                               }))
                             }
-                            className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-400">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">
                         Follow-Up Logic
                       </label>
                       <select
@@ -535,7 +535,7 @@ const Settings: React.FC = () => {
                             followUpLogic: e.target.value as AISettings['followUpLogic'],
                           }))
                         }
-                        className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="standard">Standard</option>
                         <option value="aggressive">Aggressive</option>
@@ -546,19 +546,19 @@ const Settings: React.FC = () => {
                       <button
                         type="submit"
                         disabled={loading}
-                        className={`px-6 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {loading ? 'Saving...' : 'Save'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setAIModalOpen(false)}
-                        className="px-6 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition"
+                        className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
                       >
                         Cancel
                       </button>
                     </div>
-                    {error && <p className="text-red-400 mt-2">{error}</p>}
+                    {error && <p className="text-red-600 mt-2">{error}</p>}
                   </form>
                 </motion.div>
               </div>
@@ -569,17 +569,17 @@ const Settings: React.FC = () => {
       case 'Customization':
         return (
           <form onSubmit={handleCustomizationSubmit} className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-200">Customize Your Interview Form</h2>
-            <p className="text-sm text-gray-400">
+            <h2 className="text-xl font-semibold text-gray-900">Customize Your Interview Form</h2>
+            <p className="text-sm text-gray-500">
               Toggle the fields you want candidates to fill out. Customize your branding and button color.
             </p>
             <div className="space-y-4">
               {Object.keys(customization.formFields).map((field) => (
                 <div
                   key={field}
-                  className="flex items-center justify-between border border-gray-700 rounded-md px-4 py-2"
+                  className="flex items-center justify-between border border-gray-200 rounded-md px-4 py-2"
                 >
-                  <label className="font-medium text-gray-200">{field.replace(/([A-Z])/g, ' $1')}</label>
+                  <label className="font-medium text-gray-700">{field.replace(/([A-Z])/g, ' $1')}</label>
                   <input
                     type="checkbox"
                     checked={customization.formFields[field]}
@@ -592,15 +592,15 @@ const Settings: React.FC = () => {
                         },
                       }))
                     }
-                    className="h-5 w-5 text-purple-500 rounded border-gray-600 bg-gray-800 focus:ring-purple-500"
+                    className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                   />
                 </div>
               ))}
             </div>
-            <div className="mt-6 border border-gray-700 rounded-md p-4">
-              <label className="block mb-2 text-sm font-medium text-gray-200">Branding:</label>
+            <div className="mt-6 border border-gray-200 rounded-md p-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700">Branding:</label>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-400">Select a button color:</span>
+                <span className="text-sm text-gray-500">Select a button color:</span>
                 <input
                   type="color"
                   value={customization.buttonColor}
@@ -613,7 +613,7 @@ const Settings: React.FC = () => {
                   style={{ backgroundColor: customization.buttonColor }}
                   className="ml-auto px-4 py-2 rounded-md text-white shadow-md hover:opacity-90 transition"
                 >
-                  Let’s Start
+                  Let's Start
                 </button>
               </div>
             </div>
@@ -621,12 +621,12 @@ const Settings: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className={`px-6 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`px-6 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {loading ? 'Saving...' : 'Save'}
               </button>
             </div>
-            {error && <p className="text-red-400 mt-2">{error}</p>}
+            {error && <p className="text-red-600 mt-2">{error}</p>}
           </form>
         );
 
@@ -636,7 +636,7 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 relative">
+    <div className="min-h-screen bg-white relative">
       <Navbar />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
@@ -648,29 +648,29 @@ const Settings: React.FC = () => {
         >
           {/* Header */}
           <div>
-            <h1 className="text-3xl font-bold text-white bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+            <h1 className="text-3xl font-bold text-gray-900">
               Settings
             </h1>
-            <p className="text-gray-400 mt-1">Manage your admin and platform preferences</p>
+            <p className="text-gray-500 mt-1">Manage your admin and platform preferences</p>
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex space-x-6 border-b border-gray-700">
+          <div className="flex space-x-6 border-b border-gray-200">
             {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`pb-3 relative text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? 'text-purple-500'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 {tab}
                 {activeTab === tab && (
                   <motion.div
                     layoutId="settings-tab-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
                   />
                 )}
               </button>
@@ -685,7 +685,7 @@ const Settings: React.FC = () => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-gray-800 p-6 rounded-xl border border-gray-700"
+              className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"
             >
               {renderTabContent(activeTab)}
             </motion.div>

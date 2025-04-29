@@ -116,7 +116,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
     totalCandidates: number;
     timeToHire: string;
     hiringRate: string;
-    interviewConversionRate?: string; // Added for expanded Key Metrics
+    interviewConversionRate?: string;
     recentJobs: Job[];
     upcomingInterviews: Interview[];
     notifications: Notification[];
@@ -125,7 +125,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
     totalCandidates: 0,
     timeToHire: '',
     hiringRate: '',
-    interviewConversionRate: '0%', // Default value
+    interviewConversionRate: '0%',
     recentJobs: [],
     upcomingInterviews: [],
     notifications: [],
@@ -135,13 +135,10 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [anchorElInterview, setAnchorElInterview] = useState<null | HTMLElement>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>(
-    localStorage.getItem('theme') === 'light' ? 'light' : 'dark'
-  );
   const [isJobsExpanded, setIsJobsExpanded] = useState(true);
   const [isInterviewsExpanded, setIsInterviewsExpanded] = useState(true);
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
-  const [expandedMetric, setExpandedMetric] = useState<string | null>(null); // For Key Metrics details
+  const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
 
   // Hunter AI state
   const [hunterMessages, setHunterMessages] = useState<HunterMessage[]>([
@@ -174,7 +171,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
       {
         data: [60, 28, 15, 8],
         backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#A855F7'],
-        borderColor: theme === 'dark' ? ['#1F2937', '#1F2937', '#1F2937', '#1F2937'] : ['#E5E7EB', '#E5E7EB', '#E5E7EB', '#E5E7EB'],
+        borderColor: ['#2563EB', '#9333EA'],
         borderWidth: 2,
       },
     ],
@@ -212,16 +209,6 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
     totalCandidates: { change: -5, direction: 'down' as 'up' | 'down' },
     timeToHire: { change: 3, direction: 'down' as 'up' | 'down' },
     interviewConversionRate: { change: 2, direction: 'up' as 'up' | 'down' },
-  };
-
-  // Theme toggle
-  useEffect(() => {
-    localStorage.setItem('theme', theme);
-    document.body.className = theme;
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   // Generate AI-driven insights
@@ -747,7 +734,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
     .slice(0, 3);
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'} flex flex-col`}>
+    <div className="min-h-screen bg-gray-100 text-gray-900 flex flex-col">
       {/* Mobile Menu Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
@@ -761,7 +748,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
 
       {/* Mobile Menu */}
       <div
-        className={`lg:hidden fixed inset-0 ${theme === 'dark' ? 'bg-gray-900/95' : 'bg-gray-100/95'} z-40 transform transition-transform duration-300 ${
+        className={`lg:hidden fixed inset-0 bg-gray-100/95 z-40 transform transition-transform duration-300 ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -773,7 +760,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
             className="absolute top-20 right-4 p-2"
             aria-label="Close mobile menu"
           >
-            <XMarkIcon className={`h-6 w-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} />
+            <XMarkIcon className="h-6 w-6 text-gray-900" />
           </motion.button>
           <div className="space-y-4">
             <motion.button
@@ -784,7 +771,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                 setIsMobileMenuOpen(false);
                 handleHunterAction('navigate_create_job');
               }}
-              className={`w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium ${theme === 'dark' ? 'text-white bg-blue-600/20 hover:bg-blue-600/30' : 'text-gray-900 bg-blue-200/50 hover:bg-blue-200/70'}`}
+              className="w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium text-gray-900 bg-blue-200/50 hover:bg-blue-200/70"
             >
               <PlusIcon className="h-5 w-5 text-blue-400" />
               <span>Post New Job</span>
@@ -797,7 +784,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                 setIsMobileMenuOpen(false);
                 handleHunterAction('navigate_schedule');
               }}
-              className={`w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium ${theme === 'dark' ? 'text-white bg-blue-600/20 hover:bg-blue-600/30' : 'text-gray-900 bg-blue-200/50 hover:bg-blue-200/70'}`}
+              className="w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium text-gray-900 bg-blue-200/50 hover:bg-blue-200/70"
             >
               <CalendarIcon className="h-5 w-5 text-blue-400" />
               <span>Schedule Interview</span>
@@ -809,7 +796,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                 navigate('/admin/jobs');
                 setIsMobileMenuOpen(false);
               }}
-              className={`w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium ${theme === 'dark' ? 'text-white bg-blue-600/20 hover:bg-blue-600/30' : 'text-gray-900 bg-blue-200/50 hover:bg-blue-200/70'}`}
+              className="w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium text-gray-900 bg-blue-200/50 hover:bg-blue-200/70"
             >
               <BriefcaseIcon className="h-5 w-5 text-blue-400" />
               <span>View Jobs</span>
@@ -821,7 +808,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                 navigate('/admin/candidates');
                 setIsMobileMenuOpen(false);
               }}
-              className={`w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium ${theme === 'dark' ? 'text-white bg-blue-600/20 hover:bg-blue-600/30' : 'text-gray-900 bg-blue-200/50 hover:bg-blue-200/70'}`}
+              className="w-full p-4 text-left rounded-lg flex items-center space-x-3 text-base font-medium text-gray-900 bg-blue-200/50 hover:bg-blue-200/70"
             >
               <UserGroupIcon className="h-5 w-5 text-blue-400" />
               <span>View Candidates</span>
@@ -837,7 +824,6 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
         userAvatar="https://randomuser.me/api/portraits/men/1.jpg"
         onSearch={() => {}}
         initialNotifications={dashboardData.notifications}
-        theme={theme}
       />
 
       {/* Toast Notification */}
@@ -865,7 +851,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className={`text-3xl font-bold tracking-tight bg-clip-text text-transparent ${theme === 'dark' ? 'bg-gradient-to-r from-blue-400 to-indigo-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
+              <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                 <TypeAnimation
                   sequence={[
                     'Welcome back, Troy!',
@@ -882,7 +868,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                   repeat={Infinity}
                 />
               </h1>
-              <p className={`mt-1 text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className="mt-1 text-sm font-medium text-gray-600">
                 Recruitment Dashboard • April 23, 2025
               </p>
             </div>
@@ -924,7 +910,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                   borderRadius: 2,
                   fontWeight: 600,
                   textTransform: 'none',
-                  '&:hover': { bgcolor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)' },
+                  '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.05)' },
                 }}
                 aria-label="Schedule interview"
               >
@@ -948,30 +934,17 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                   handleHunterAction('refresh_data');
                   setTimeout(() => setIsLoading(false), 1000);
                 }}
-                className={`p-2 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} rounded-lg hover:bg-opacity-80 transition-colors`}
+                className="p-2 bg-gray-200 rounded-lg hover:bg-opacity-80 transition-colors"
                 aria-label="Refresh data"
               >
                 <ArrowPathRoundedSquareIcon className="h-5 w-5 text-blue-400" />
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={toggleTheme}
-                className={`p-2 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} rounded-lg hover:bg-opacity-80 transition-colors`}
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <SunIcon className="h-5 w-5 text-yellow-400" />
-                ) : (
-                  <MoonIcon className="h-5 w-5 text-gray-600" />
-                )}
-              </motion.button>
             </div>
           </div>
 
-          {/* Interactive Tabs - Moved to top of page */}
+          {/* Interactive Tabs */}
           <div className="mb-6">
-            <div className="border-b border-gray-200 dark:border-gray-700">
+            <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-6">
                 {[
                   { id: 'overview', label: 'Overview' },
@@ -986,8 +959,8 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                     whileTap={{ scale: 0.95 }}
                     className={`${
                       activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
                     } whitespace-nowrap py-3 px-2 border-b-2 font-medium text-sm capitalize transition-colors`}
                   >
                     {tab.label}
@@ -1000,48 +973,48 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
           {/* Tab Content */}
           {activeTab === 'overview' ? (
             <OverviewTab 
-              theme={theme} 
               dashboardData={dashboardData}
               trends={trends}
             />
           ) : activeTab === 'analytics' ? (
             <AnalyticsTab 
-              theme={theme} 
-              dashboardData={dashboardData}
+              analyticsData={{
+                applicationsOverTime: [],
+                candidateSources: [],
+                hiringFunnel: []
+              }}
             />
           ) : activeTab === 'candidates' ? (
             <CandidatesTab 
-              theme={theme} 
+              theme="light"
               onSelectCandidate={(id) => navigate(`/admin/candidates/${id}`)}
             />
           ) : activeTab === 'interviews' && (
             <InterviewsTab 
-              theme={theme} 
+              theme="light"
               interviews={dashboardData.upcomingInterviews}
               onScheduleInterview={() => navigate('/admin/schedule')}
-                    />
-                )}
-              </motion.div>
+            />
+          )}
+        </motion.div>
       </div>
 
       {/* Floating Hunter AI Chatbot Icon */}
-              <motion.div
+      <motion.div
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsChatOpen(true)}
-        className={`fixed right-6 bottom-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center cursor-pointer z-50 ${
-          theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
-        }`}
+        className="fixed right-6 bottom-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center cursor-pointer z-50 bg-blue-500 hover:bg-blue-600"
       >
         <ChatBubbleBottomCenterTextIcon className="h-7 w-7 text-white" />
-              </motion.div>
+      </motion.div>
 
       {/* Hunter AI Chat Modal */}
       <AnimatePresence>
         {isChatOpen && (
           <>
             {/* Modal Backdrop */}
-              <motion.div
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1054,12 +1027,10 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className={`fixed right-6 bottom-20 w-96 rounded-lg shadow-xl overflow-hidden z-50 ${
-                theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-              }`}
+              className="fixed right-6 bottom-20 w-96 rounded-lg shadow-xl overflow-hidden z-50 bg-white"
             >
               {/* Chat Header */}
-              <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between`}>
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden">
                     <img 
@@ -1068,7 +1039,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <h3 className={`font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>Hunter AI</h3>
+                  <h3 className="font-medium text-gray-900">Hunter AI</h3>
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -1080,62 +1051,21 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                 </motion.button>
               </div>
               
-                  {/* Chat Messages */}
-                  <div 
-                    ref={hunterMessagesRef}
+              {/* Chat Messages */}
+              <div 
+                ref={hunterMessagesRef}
                 className="h-80 overflow-y-auto p-4 space-y-4"
-                  >
-                    <AnimatePresence>
-                      {hunterMessages.map((msg, index) => (
-                        <motion.div
-                          key={index}
-                          variants={messageVariants}
-                          initial="hidden"
-                          animate="visible"
-                          className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2`}
-                        >
-                          {msg.sender === 'hunter' && (
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden">
-                              <img 
-                                src="https://api.dicebear.com/7.x/bottts/svg?seed=Hunter" 
-                                alt="Hunter AI" 
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          <motion.div
-                            initial={{ x: msg.sender === 'user' ? 20 : -20 }}
-                            animate={{ x: 0 }}
-                            className={`max-w-[80%] rounded-lg p-3 ${
-                              msg.sender === 'user'
-                                ? theme === 'dark'
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-blue-500 text-white'
-                                : theme === 'dark'
-                                ? 'bg-gray-700 text-gray-200'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            <p className="text-sm">{msg.message}</p>
-                          </motion.div>
-                          {msg.sender === 'user' && (
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center overflow-hidden">
-                              <img 
-                                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Troy" 
-                                alt="User" 
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                    {isHunterLoading && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex justify-start items-end gap-2"
-                      >
+              >
+                <AnimatePresence>
+                  {hunterMessages.map((msg, index) => (
+                    <motion.div
+                      key={index}
+                      variants={messageVariants}
+                      initial="hidden"
+                      animate="visible"
+                      className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2`}
+                    >
+                      {msg.sender === 'hunter' && (
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden">
                           <img 
                             src="https://api.dicebear.com/7.x/bottts/svg?seed=Hunter" 
@@ -1143,71 +1073,94 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <div className={`max-w-[80%] rounded-lg p-3 ${
-                          theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-                        }`}>
-                          <div className="flex space-x-2">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-100" />
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-200" />
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  {/* Chat Features */}
-              <div className="p-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex flex-wrap gap-2">
-                    {chatFeatures.map((feature) => (
-                      <motion.button
-                        key={feature.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={feature.action}
-                    className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs ${
-                          theme === 'dark'
-                            ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        } transition-colors`}
+                      )}
+                      <motion.div
+                        initial={{ x: msg.sender === 'user' ? 20 : -20 }}
+                        animate={{ x: 0 }}
+                        className={`max-w-[80%] rounded-lg p-3 ${
+                          msg.sender === 'user'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
                       >
-                        {feature.icon}
-                        <span>{feature.label}</span>
-                      </motion.button>
-                    ))}
-                  </div>
+                        <p className="text-sm">{msg.message}</p>
+                      </motion.div>
+                      {msg.sender === 'user' && (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center overflow-hidden">
+                          <img 
+                            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Troy" 
+                            alt="User" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                {isHunterLoading && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex justify-start items-end gap-2"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src="https://api.dicebear.com/7.x/bottts/svg?seed=Hunter" 
+                        alt="Hunter AI" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="max-w-[80%] rounded-lg p-3 bg-gray-100">
+                      <div className="flex space-x-2">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-100" />
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-200" />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
 
-                  {/* Chat Input */}
-              <form onSubmit={handleHunterSubmit} className="p-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex gap-2">
-                    <input
-                      type="text"
-                      value={hunterInput}
-                      onChange={(e) => setHunterInput(e.target.value)}
-                      placeholder="Ask Hunter AI..."
-                      className={`flex-1 px-4 py-2 rounded-lg text-sm ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 text-white placeholder-gray-400 border border-gray-600'
-                          : 'bg-gray-100 text-gray-900 placeholder-gray-500 border border-gray-300'
-                      } focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all`}
-                    />
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      type="submit"
-                      disabled={!hunterInput.trim() || isHunterLoading}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                        !hunterInput.trim() || isHunterLoading
-                          ? theme === 'dark'
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          : theme === 'dark'
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'bg-blue-500 text-white hover:bg-blue-600'
-                      } transition-colors`}
-                    >
-                      Send
-                    </motion.button>
-                  </form>
-              </motion.div>
+              {/* Chat Features */}
+              <div className="p-2 border-t border-gray-200 flex flex-wrap gap-2">
+                {chatFeatures.map((feature) => (
+                  <motion.button
+                    key={feature.id}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={feature.action}
+                    className="flex items-center space-x-1 px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                  >
+                    {feature.icon}
+                    <span>{feature.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Chat Input */}
+              <form onSubmit={handleHunterSubmit} className="p-4 border-t border-gray-200 flex gap-2">
+                <input
+                  type="text"
+                  value={hunterInput}
+                  onChange={(e) => setHunterInput(e.target.value)}
+                  placeholder="Ask Hunter AI..."
+                  className="flex-1 px-4 py-2 rounded-lg text-sm bg-gray-100 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="submit"
+                  disabled={!hunterInput.trim() || isHunterLoading}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                    !hunterInput.trim() || isHunterLoading
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                  } transition-colors`}
+                >
+                  Send
+                </motion.button>
+              </form>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
@@ -1216,10 +1169,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-        body.dark {
-          background: #111827;
-        }
-        body.light {
+        body {
           background: #F3F4F6;
         }
 
@@ -1231,7 +1181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
           width: 6px;
         }
         .scrollbar-thin::-webkit-scrollbar-track {
-          background: ${theme === 'dark' ? '#1F2937' : '#E5E7EB'};
+          background: #E5E7EB;
         }
         .scrollbar-thin::-webkit-scrollbar-thumb {
           background: #3B82F6;
@@ -1250,8 +1200,8 @@ const Dashboard: React.FC<DashboardProps> = ({ brandName = 'Hunter AI' }) => {
         }
 
         .MuiTooltip-tooltip {
-          background-color: ${theme === 'dark' ? '#1F2937' : '#F3F4F6'} !important;
-          color: ${theme === 'dark' ? '#F3F4F6' : '#1F2937'} !important;
+          background-color: #F3F4F6 !important;
+          color: #1F2937 !important;
           border: 1px solid #3B82F6 !important;
           border-radius: 8px !important;
           padding: 8px 12px !important;

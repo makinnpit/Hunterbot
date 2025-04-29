@@ -11,7 +11,6 @@ import {
 import { Line } from 'react-chartjs-2';
 
 interface OverviewTabProps {
-  theme: 'light' | 'dark';
   dashboardData: {
     activeJobs: number;
     totalCandidates: number;
@@ -27,7 +26,7 @@ interface OverviewTabProps {
   };
 }
 
-const OverviewTab: React.FC<OverviewTabProps> = ({ theme, dashboardData, trends }) => {
+const OverviewTab: React.FC<OverviewTabProps> = ({ dashboardData, trends }) => {
   const sparklineData = (baseValue: number) => ({
     labels: Array(7).fill('').map((_, i) => `Day ${i + 1}`),
     datasets: [
@@ -94,16 +93,12 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ theme, dashboardData, trends 
         <motion.div
           key={metric.title}
           whileHover={{ scale: 1.02 }}
-          className={`p-6 rounded-xl ${
-            theme === 'dark' 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-white border border-gray-200'
-          } shadow-md hover:shadow-lg transition-shadow`}
+          className="p-6 rounded-xl bg-white border border-gray-200 shadow-md hover:shadow-lg transition-shadow"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <metric.icon className={`h-6 w-6 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
-              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+              <metric.icon className="h-6 w-6 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">
                 {metric.title}
               </h3>
             </div>
@@ -122,10 +117,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ theme, dashboardData, trends 
           </div>
           <div className="flex items-end justify-between">
             <div>
-              <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <p className="text-3xl font-bold text-gray-900">
                 {metric.value}
               </p>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className="text-sm text-gray-500">
                 {metric.tooltip}
               </p>
             </div>
